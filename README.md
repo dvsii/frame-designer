@@ -1,5 +1,7 @@
 # Framewright
 
+**Use it here: https://dvsii.github.io/framewright/** (open it on your phone and add it to the home screen to install it; see [Install on a phone](#install-on-a-phone)).
+
 A lightweight web app for making picture frames. Enter the sizes you know on a drawing of the frame (artwork, outside size, rail and stile widths, in any combination) and it works out the rest, then gives you:
 
 - a to-scale front view with editable dimensions and the hidden joinery dashed in,
