@@ -225,7 +225,9 @@ table { border-collapse: collapse; width: 100%; }
 .note { color: var(--muted); font-size: 13.5px; margin: 8px 0 0; }
 .cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 24px; }
 @media (min-width: 900px) { .cols { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); } }
-.cols h3 { margin-bottom: 8px; }
+.cols h3, .mats-block h3 { margin-bottom: 8px; }
+.mats-block { margin-top: 24px; }
+#steps .cols { margin-top: 0; }
 .card { padding: 10px 0 12px; border-top: 1px solid var(--line); }
 .card h4 { margin: 0 0 6px; font-family: var(--font-display); font-weight: 600; font-size: 16px; }
 .card ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; max-width: 70ch; }
@@ -268,7 +270,7 @@ table { border-collapse: collapse; width: 100%; }
 .lgroup .tag-buy { color: var(--tape-ink); background: var(--tape); border-radius: 3px; padding: 1px 6px; font-size: 11px; font-family: var(--font-display); letter-spacing: .08em; text-transform: uppercase; margin-left: 6px; }
 
 /* Steps */
-#steps ol { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 8px; max-width: 75ch; }
+#steps ol { margin: 0; padding: 10px 0 0 22px; border-top: 1px solid var(--line); display: grid; gap: 8px; max-width: 75ch; }
 #steps li::marker { font-family: var(--font-num); color: var(--muted); }
 
 footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
@@ -529,15 +531,9 @@ footer a:hover { color: var(--ink); }
     <dl class="sum" id="sum"></dl>
     <div class="table-wrap"><table class="cuts" id="cuts"></table></div>
     <p class="note" id="cut-note"></p>
-    <div class="cols">
-      <div>
-        <h3>Joinery</h3>
-        <div id="cards"></div>
-      </div>
-      <div>
-        <h3>Materials and hardware</h3>
-        <div class="mats-wrap"><table class="mats" id="mats"></table></div>
-      </div>
+    <div class="mats-block">
+      <h3>Materials and hardware</h3>
+      <div class="mats-wrap"><table class="mats" id="mats"></table></div>
     </div>
   </section>
 
@@ -596,9 +592,18 @@ footer a:hover { color: var(--ink); }
     </div>
   </section>
 
-  <section id="steps" aria-label="Build steps">
-    <div class="res-head"><h2>Build steps</h2></div>
-    <ol id="steps-list"></ol>
+  <section id="steps" aria-label="Joinery and build steps">
+    <div class="res-head"><h2>Joinery and build steps</h2></div>
+    <div class="cols">
+      <div>
+        <h3>Joinery</h3>
+        <div id="cards"></div>
+      </div>
+      <div>
+        <h3>Build steps</h3>
+        <ol id="steps-list"></ol>
+      </div>
+    </div>
   </section>
 
   <footer>
