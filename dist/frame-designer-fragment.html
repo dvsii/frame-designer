@@ -59,8 +59,6 @@ h3 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: 
 
 .wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 56px; }
 /* The iPhone app draws under the status bar (browsers report no top inset): keep the page below it, with a strip of page colour behind the clock. */
-body { padding-top: env(safe-area-inset-top, 0px); }
-body::before { content: ""; position: fixed; z-index: 30; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background: var(--bg); }
 
 /* Header */
 .top { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; padding-block: 16px 12px; }

@@ -43,6 +43,10 @@ def main():
     html = re.sub(r'<script src="([^"]+)"></script>', inline, html)
 
     if fragment:
+        # Hosts that wrap the page already pad it by the phone's safe-area insets; drop the app's own top inset.
+        html, n = re.subn(r'body \{ padding-top: env\(safe-area-inset-top, 0px\); \}\nbody::before \{[^\n]*\}\n', '', html)
+        if n != 1:
+            raise SystemExit('index.html no longer has the top safe-area rules; update build_single.py')
         title = re.search(r'<title>.*?</title>', html, re.S).group(0)
         fit = re.search(r'<meta name="claude:viewport-fit-sides"[^>]*>', html).group(0)
         links = ''.join(re.findall(r'<link [^>]*>\n?', html))
