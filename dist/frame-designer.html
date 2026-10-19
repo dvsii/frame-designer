@@ -273,6 +273,8 @@ table { border-collapse: collapse; width: 100%; }
 
 footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
 footer p { margin: 0; max-width: 80ch; }
+footer a { color: inherit; text-underline-offset: 2px; }
+footer a:hover { color: var(--ink); }
 
 /* Dimension editor */
 .editor { position: fixed; z-index: 40; width: min(300px, calc(100vw - 24px)); background: var(--panel); border: 1px solid var(--ink); border-radius: var(--r); box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 12px; display: grid; gap: 10px; }
@@ -602,6 +604,8 @@ footer p { margin: 0; max-width: 80ch; }
   <footer>
     <p>All sizes are worked out from your inputs; check the first cut against a test piece before cutting good stock. A + or − after a fraction means the true size is a hair over or under it.</p>
     <p id="footer-local">Frame Designer runs entirely in your browser. Nothing you enter leaves this device.</p>
+    <!-- Full URLs, so the links also work in dist/ and open in Safari from the iPhone app. -->
+    <p><a href="https://dvsii.github.io/frame-designer/privacy.html">Privacy policy</a> · <a href="https://dvsii.github.io/frame-designer/support.html">Support</a></p>
   </footer>
 </div>
 
