@@ -158,10 +158,17 @@ section { scroll-margin-top: 56px; }
 
 /* Inspector */
 .inspector { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 4px 14px 14px; min-width: 0; }
-.inspector fieldset { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 12px 0 4px; display: grid; gap: 10px; min-width: 0; }
-.inspector fieldset:first-child { border-top: 0; }
-.inspector legend { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; padding: 0; float: left; width: 100%; margin-bottom: 2px; }
-.inspector legend + * { clear: left; }
+.stock-form { padding: 4px 14px 14px; }
+.stepper { display: grid; grid-template-columns: 40px minmax(0, 120px) 40px; gap: 6px; align-items: center; }
+.stepper .step { height: 36px; padding: 0; font-size: 18px; line-height: 1; }
+.stepper .inp input { padding: 0 8px; text-align: center; }
+.stock-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (min-width: 1040px) { .stock-grid { grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.6fr); } }
+.stock-out { min-width: 0; }
+.inputs fieldset { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 12px 0 4px; display: grid; gap: 10px; min-width: 0; }
+.inputs fieldset:first-child { border-top: 0; }
+.inputs legend { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; padding: 0; float: left; width: 100%; margin-bottom: 2px; }
+.inputs legend + * { clear: left; }
 .field { display: grid; gap: 4px; min-width: 0; }
 .lbl { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: baseline; }
 .lbl .tag { margin-left: auto; font-size: 11px; font-family: var(--font-display); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
@@ -178,6 +185,8 @@ section { scroll-margin-top: 56px; }
 .field .reset { border: 0; background: none; padding: 0; color: var(--ink); text-decoration: underline; cursor: pointer; font-size: 12px; margin-left: auto; }
 .pair, #joint-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
 .span2 { grid-column: 1 / -1; }
+#joint-top { display: grid; gap: 10px; }
+#joint-top:empty { display: none; }
 .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end; }
 .check { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
 .check input { width: 18px; height: 18px; accent-color: var(--ink); margin: 0; }
@@ -304,7 +313,7 @@ footer p { margin: 0; max-width: 80ch; }
 
 @media print {
   body { background: #fff; color: #000; }
-  .actions, .bar, .joints, .inspector, .corner-controls, .legend, .res-head .btn, .editor, .toast, .designs, .panel-head .hint { display: none !important; }
+  .actions, .bar, .joints, .inspector, .stock-form, .corner-controls, .legend, .res-head .btn, .editor, .toast, .designs, .panel-head .hint { display: none !important; }
   .work { grid-template-columns: 1fr 1fr !important; }
   .panel, .table-wrap, .sum, .mats-wrap { border-color: #999; }
   section { break-inside: avoid-page; }
@@ -323,7 +332,7 @@ footer p { margin: 0; max-width: 80ch; }
       </svg>
       <div>
         <h1>Frame Designer</h1>
-        <p>Picture frame cut lists for nine ways to join a corner</p>
+        <p>Cut lists for picture frames and panel doors, with nine ways to join a corner</p>
       </div>
     </div>
     <div class="actions">
@@ -403,9 +412,17 @@ footer p { margin: 0; max-width: 80ch; }
         </figure>
       </div>
 
-      <form class="inspector" id="inspector" autocomplete="off" novalidate>
+      <form class="inspector inputs" id="inspector" autocomplete="off" novalidate>
         <fieldset>
-          <legend>Size</legend>
+          <legend id="lg-size">Frame</legend>
+          <div class="field">
+            <span class="lbl" id="lbl-qty">Frames to make</span>
+            <div class="stepper" role="group" aria-labelledby="lbl-qty">
+              <button type="button" class="btn step" data-step="-1" aria-label="One fewer">−</button>
+              <span class="inp"><input id="f-qty" data-path="qty" data-kind="int" inputmode="numeric" spellcheck="false" aria-labelledby="lbl-qty"></span>
+              <button type="button" class="btn step" data-step="1" aria-label="One more">+</button>
+            </div>
+          </div>
           <div class="field">
             <span class="lbl" id="lbl-solve">Calculate</span>
             <div class="seg seg-wide" data-seg="solve" role="group" aria-labelledby="lbl-solve">
@@ -414,7 +431,7 @@ footer p { margin: 0; max-width: 80ch; }
               <button type="button" data-val="widths">Widths</button>
             </div>
           </div>
-          <div class="field">
+          <div class="field" id="ref-field">
             <span class="lbl" id="lbl-ref">Measure the inside by</span>
             <div class="seg seg-wide" data-seg="innerRef" role="group" aria-labelledby="lbl-ref">
               <button type="button" data-val="art">Artwork or glass</button>
@@ -443,27 +460,24 @@ footer p { margin: 0; max-width: 80ch; }
           </div>
           <label class="check"><input type="checkbox" id="f-link" data-path="linkWidths" data-kind="bool"> Same width all round</label>
           <p class="help">Stiles are the sides; rails are the top and bottom. Type fractions as 11 3/4 or 11-3/4, or metric like 298 mm.</p>
-        </fieldset>
-
-        <fieldset>
-          <legend>Stock and rabbet</legend>
           <div class="pair">
-            <label class="field"><span class="lbl">Stock thickness</span>
+            <label class="field"><span class="lbl">Thickness</span>
               <span class="inp"><input id="f-thick" data-path="thickness" spellcheck="false"><span class="u"></span></span></label>
-            <label class="field"><span class="lbl">Fit allowance</span>
+            <label class="field" id="clear-field"><span class="lbl">Fit allowance</span>
               <span class="inp"><input id="f-clear" data-path="clearance" spellcheck="false"><span class="u"></span></span></label>
           </div>
-          <div class="pair">
+          <div class="pair" id="rabbet-fields">
             <label class="field"><span class="lbl">Rabbet width (lip)</span>
               <span class="inp"><input id="f-rabw" data-path="rabbetW" spellcheck="false"><span class="u"></span></span></label>
             <label class="field"><span class="lbl">Rabbet depth</span>
               <span class="inp"><input id="f-rabd" data-path="rabbetD" spellcheck="false"><span class="u"></span></span></label>
           </div>
-          <p class="help">The rabbet is the step behind the frame that holds the glass, art and backer. The fit allowance is the total play around the glass.</p>
+          <p class="help" id="rabbet-help">The rabbet is the step behind the frame that holds the glass, art and backer. The fit allowance is the total play around the glass.</p>
         </fieldset>
 
         <fieldset>
           <legend id="lg-joint">Joint</legend>
+          <div id="joint-top" class="field-list"></div>
           <div class="field" id="through-field">
             <span class="lbl" id="lbl-through">Runs through to the corner</span>
             <div class="seg seg-wide" data-seg="through" role="group" aria-labelledby="lbl-through">
@@ -474,7 +488,7 @@ footer p { margin: 0; max-width: 80ch; }
           <div id="joint-fields" class="field-list"></div>
         </fieldset>
 
-        <fieldset>
+        <fieldset id="mat-fs">
           <legend>Mat</legend>
           <label class="check"><input type="checkbox" id="f-mat" data-path="mat.on" data-kind="bool"> Add a mat around the artwork</label>
           <div id="mat-fields" class="field-list" style="display:grid;gap:10px">
@@ -492,51 +506,8 @@ footer p { margin: 0; max-width: 80ch; }
         </fieldset>
 
         <fieldset>
-          <legend>Stock and cutting</legend>
-          <div class="field">
-            <span class="lbl" id="lbl-source">Cut the pieces from</span>
-            <div class="seg seg-wide" data-seg="source" role="group" aria-labelledby="lbl-source">
-              <button type="button" data-val="strips">Strips at width</button>
-              <button type="button" data-val="boards">Boards</button>
-              <button type="button" data-val="molding">Molding</button>
-            </div>
-          </div>
-          <p class="help" id="source-help"></p>
-          <div id="molding-fields" class="field-list" style="display:grid;gap:10px">
-            <div class="pair">
-              <label class="field"><span class="lbl">Molding width</span>
-                <span class="inp"><input id="f-mold-w" data-path="stile" spellcheck="false"><span class="u"></span></span></label>
-              <label class="field"><span class="lbl">Thickness</span>
-                <span class="inp"><input id="f-mold-t" data-path="thickness" spellcheck="false"><span class="u"></span></span></label>
-            </div>
-            <div class="pair">
-              <label class="field"><span class="lbl">Rabbet width</span>
-                <span class="inp"><input id="f-mold-rw" data-path="rabbetW" spellcheck="false"><span class="u"></span></span></label>
-              <label class="field"><span class="lbl">Rabbet depth</span>
-                <span class="inp"><input id="f-mold-rd" data-path="rabbetD" spellcheck="false"><span class="u"></span></span></label>
-            </div>
-          </div>
-          <div id="boards-fields" class="field-list" style="display:grid;gap:8px">
-            <div class="boards-head"><span>Width</span><span>Thick</span><span>Length</span><span>Qty</span><span></span></div>
-            <div id="board-rows" class="board-rows"></div>
-            <button type="button" class="btn add-board" id="add-board">Add a board</button>
-            <label class="check"><input type="checkbox" id="f-buy" data-path="stock.buy" data-kind="bool"> Buy standard boards for whatever doesn't fit</label>
-          </div>
-          <div class="pair">
-            <label class="field"><span class="lbl" id="lbl-board">Board length</span>
-              <span class="inp"><input id="f-board" data-path="stock.length" spellcheck="false"><span class="u"></span></span></label>
-            <label class="field"><span class="lbl">Saw kerf</span>
-              <span class="inp"><input id="f-kerf" data-path="stock.kerf" spellcheck="false"><span class="u"></span></span></label>
-          </div>
-          <div class="pair">
-            <label class="field"><span class="lbl" id="lbl-trim">End trim per board</span>
-              <span class="inp"><input id="f-trim" data-path="stock.trim" spellcheck="false"><span class="u"></span></span></label>
-            <label class="field"><span class="lbl">Frames to make</span>
-              <span class="inp"><input id="f-qty" data-path="qty" data-kind="int" inputmode="numeric" spellcheck="false"></span></label>
-          </div>
-          <label class="check"><input type="checkbox" id="f-grain" data-path="stock.grain" data-kind="bool"> Cut each frame in order so the grain wraps the corners</label>
-          <label class="check" id="suggest-check"><input type="checkbox" id="f-suggest" data-path="stock.suggest" data-kind="bool"> Suggest the boards to buy that waste the least</label>
-          <label class="field"><span class="lbl">Round to</span>
+          <legend>Display</legend>
+          <label class="field"><span class="lbl">Round sizes to</span>
             <span class="inp"><select id="f-prec"></select></span></label>
         </fieldset>
       </form>
@@ -565,14 +536,59 @@ footer p { margin: 0; max-width: 80ch; }
     </div>
   </section>
 
-  <section id="stock" aria-label="Stock layout">
+  <section id="stock" aria-label="Stock">
     <div class="res-head">
-      <h2>Stock layout</h2>
+      <h2>Stock</h2>
       <span class="sub" id="stock-sub"></span>
     </div>
-    <p class="stock-sum" id="stock-sum"></p>
-    <div class="suggest" id="suggest" hidden></div>
-    <div class="layout" id="layout"></div>
+    <div class="stock-grid">
+      <form class="panel inputs stock-form" id="stock-form" autocomplete="off" novalidate>
+        <fieldset>
+          <legend id="lbl-source">Cut the pieces from</legend>
+          <div class="seg seg-wide" data-seg="source" role="group" aria-labelledby="lbl-source">
+            <button type="button" data-val="strips">Strips at width</button>
+            <button type="button" data-val="boards">Boards</button>
+            <button type="button" data-val="molding">Molding</button>
+          </div>
+          <p class="help" id="source-help"></p>
+          <div id="molding-fields" class="field-list" style="display:grid;gap:10px">
+            <div class="pair">
+              <label class="field"><span class="lbl">Molding width</span>
+                <span class="inp"><input id="f-mold-w" data-path="stile" spellcheck="false"><span class="u"></span></span></label>
+              <label class="field"><span class="lbl">Thickness</span>
+                <span class="inp"><input id="f-mold-t" data-path="thickness" spellcheck="false"><span class="u"></span></span></label>
+            </div>
+            <div class="pair">
+              <label class="field"><span class="lbl">Rabbet width</span>
+                <span class="inp"><input id="f-mold-rw" data-path="rabbetW" spellcheck="false"><span class="u"></span></span></label>
+              <label class="field"><span class="lbl">Rabbet depth</span>
+                <span class="inp"><input id="f-mold-rd" data-path="rabbetD" spellcheck="false"><span class="u"></span></span></label>
+            </div>
+          </div>
+          <div id="boards-fields" class="field-list" style="display:grid;gap:8px">
+            <div class="boards-head"><span>Width</span><span>Thick</span><span>Length</span><span>Qty</span><span></span></div>
+            <div id="board-rows" class="board-rows"></div>
+            <button type="button" class="btn add-board" id="add-board">Add a board</button>
+            <label class="check"><input type="checkbox" id="f-buy" data-path="stock.buy" data-kind="bool"> Buy standard boards for whatever doesn't fit</label>
+          </div>
+          <label class="field"><span class="lbl" id="lbl-board">Board length</span>
+            <span class="inp"><input id="f-board" data-path="stock.length" spellcheck="false"><span class="u"></span></span></label>
+          <div class="pair">
+            <label class="field"><span class="lbl">Saw kerf</span>
+              <span class="inp"><input id="f-kerf" data-path="stock.kerf" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field"><span class="lbl" id="lbl-trim">End trim per board</span>
+              <span class="inp"><input id="f-trim" data-path="stock.trim" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <label class="check"><input type="checkbox" id="f-grain" data-path="stock.grain" data-kind="bool"> Cut each frame in order so the grain wraps the corners</label>
+          <label class="check" id="suggest-check"><input type="checkbox" id="f-suggest" data-path="stock.suggest" data-kind="bool"> Suggest the boards to buy that waste the least</label>
+        </fieldset>
+      </form>
+      <div class="stock-out">
+        <p class="stock-sum" id="stock-sum"></p>
+        <div class="suggest" id="suggest" hidden></div>
+        <div class="layout" id="layout"></div>
+      </div>
+    </div>
   </section>
 
   <section id="steps" aria-label="Build steps">
@@ -629,7 +645,7 @@ footer p { margin: 0; max-width: 80ch; }
     { id: 'tongue', name: 'Tongue & groove', through: true,
       blurb: 'A groove runs along every inside edge and short tongues on the rails fit into it. Quick with a dado stack or slot cutter.' },
     { id: 'cope', name: 'Cope & stick', through: true,
-      blurb: 'Matched router bits profile the inside edges and cope the rail ends to fit over them, as on a cabinet door.' },
+      blurb: 'Matched router bits profile the inside edges and cope the rail ends to fit over them. Build a picture frame, or switch to a panel door with a floating flat or raised panel.' },
     { id: 'butt', name: 'Butt joint', through: true,
       blurb: 'Square-cut ends held with dowels, biscuits, pocket screws or loose tenons. The fastest frame to make.' },
   ];
@@ -675,6 +691,8 @@ footer p { margin: 0; max-width: 80ch; }
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function num(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
+  /** Cope & stick can build a frame-and-panel door instead of a picture frame. */
+  function isDoor(s) { return s.joint === 'cope' && !!s.jp && s.jp.copeUse === 'door'; }
 
   function normalizeState(input) {
     const base = defaultState();
@@ -713,6 +731,8 @@ footer p { margin: 0; max-width: 80ch; }
       s.linkWidths = true;
       if (s.solve === 'widths') s.solve = 'outside';
     }
+    // A door is sized by its opening: there is no rabbet, glass or mat.
+    if (isDoor(s)) s.innerRef = 'sight';
     if (s.solve === 'widths') s.linkWidths = false;
     if (s.linkWidths) s.top = s.bottom = s.stile;
     return s;
@@ -815,9 +835,10 @@ footer p { margin: 0; max-width: 80ch; }
 
   /** Work out every size from the state. Writes the calculated values back into s. */
   function solve(s, F) {
-    const R = Math.max(0, s.rabbetW), c = Math.max(0, s.clearance);
-    const mo = matOffsets(s);
-    const toSight = s.innerRef === 'sight' ? { w: 0, h: 0 } : { w: mo.w + c - 2 * R, h: mo.h + c - 2 * R };
+    const door = isDoor(s);
+    const R = door ? 0 : Math.max(0, s.rabbetW), c = door ? 0 : Math.max(0, s.clearance);
+    const mo = door ? { w: 0, h: 0 } : matOffsets(s);
+    const toSight = door || s.innerRef === 'sight' ? { w: 0, h: 0 } : { w: mo.w + c - 2 * R, h: mo.h + c - 2 * R };
     let SW, SH;
     if (s.solve === 'opening') {
       SW = s.outside.w - 2 * s.stile;
@@ -841,11 +862,11 @@ footer p { margin: 0; max-width: 80ch; }
     const d = {
       OW: s.outside.w, OH: s.outside.h, SW, SH,
       RW: SW + 2 * R, RH: SH + 2 * R, GW: SW + 2 * R - c, GH: SH + 2 * R - c,
-      ws: s.stile, wT: s.top, wB: s.bottom, T: s.thickness, R, D: Math.max(0, s.rabbetD), c,
-      warnings: [],
+      ws: s.stile, wT: s.top, wB: s.bottom, T: s.thickness, R, D: door ? 0 : Math.max(0, s.rabbetD), c,
+      door, warnings: [],
     };
     d.diag = Math.hypot(d.OW, d.OH);
-    if (s.mat.on) {
+    if (s.mat.on && !door) {
       d.IW = d.GW - mo.w; d.IH = d.GH - mo.h;
       d.MW = d.IW - 2 * s.mat.overlap; d.MH = d.IH - 2 * s.mat.overlap;
     }
@@ -855,12 +876,12 @@ footer p { margin: 0; max-width: 80ch; }
     const minW = Math.min(d.ws, d.wT, d.wB);
     if (minW <= 0) err('A rail or stile width is zero or less. Make the outside size bigger or the artwork smaller.');
     else if (minW <= R + 0.125) err(`Every frame member must be wider than the rabbet (${F.L(R)}) by at least 1/8". Widen the members or narrow the rabbet.`);
-    if (SW <= 0 || SH <= 0) err('The sight opening has no room left. Make the outside size bigger or the members narrower.');
+    if (SW <= 0 || SH <= 0) err(door ? 'The panel opening has no room left. Make the door bigger or the stiles and rails narrower.' : 'The sight opening has no room left. Make the outside size bigger or the members narrower.');
     if (d.T <= 0) err('Stock thickness must be greater than zero.');
     else if (d.D >= d.T) err('The rabbet is as deep as the stock is thick. Make it shallower.');
     else if (d.T - d.D < 0.1875) warn(`The lip in front of the rabbet is only ${F.L(d.T - d.D)} thick and may break off. Aim for at least 1/4".`);
-    if (d.GW <= 0 || d.GH <= 0) err('The glass size works out to zero or less. Check the artwork size and the rabbet width.');
-    if (s.mat.on && (d.MW <= 0 || d.MH <= 0)) err('The mat window is too small. Reduce the mat borders or the overlap.');
+    if (!door && (d.GW <= 0 || d.GH <= 0)) err('The glass size works out to zero or less. Check the artwork size and the rabbet width.');
+    if (!door && s.mat.on && (d.MW <= 0 || d.MH <= 0)) err('The mat window is too small. Reduce the mat borders or the overlap.');
     if (R > 0 && d.D > 0 && d.D < 0.125) warn('A rabbet under 1/8" deep will not hold glass, art and backer. Most frames need 3/8" or more.');
     return d;
   }
@@ -905,6 +926,16 @@ footer p { margin: 0; max-width: 80ch; }
     p.grooveW = pos('grooveW', Math.max(nice(T / 3, u), 0.0625));
     p.grooveD = pos('grooveD', Math.max(0.125, nice(Math.min(0.375, Math.min(d.ws, d.wT, d.wB) / 4), u)));
     p.copeD = pos('copeD', u === 'mm' ? 9.5 / MM : 0.375);
+
+    // Panel door (cope & stick). The panel floats in the groove with a gap at the bottom of it on every side;
+    // solid wood moves across the grain about 1/8" per foot of width between seasons, plywood barely at all.
+    p.copeUse = pickEnum('copeUse', 'frame', ['frame', 'door']);
+    p.panelType = pickEnum('panelType', 'flat', ['flat', 'raised']);
+    const raised = p.panelType === 'raised';
+    p.panelT = pos('panelT', raised ? Math.max(p.grooveW + 0.125, nice(Math.min(0.625, T - 0.125), u)) : p.grooveW);
+    p.panelBevel = pos('panelBevel', Math.max(0.25, nice(Math.min(u === 'mm' ? 38 / MM : 1.5, Math.min(d.SW, d.SH) / 5), u)));
+    const across = Math.max(0, d.SW) + 2 * p.copeD;
+    p.panelGap = pos('panelGap', raised ? Math.max(0.0625, Math.ceil(across * 0.0052 * 16) / 16) : (u === 'mm' ? 1.5 / MM : 0.0625));
 
     p.buttReinf = pickEnum('buttReinf', 'dowels', ['dowels', 'biscuits', 'pocket', 'domino']);
     const sizes = dowelSizes(u);
@@ -1220,18 +1251,59 @@ footer p { margin: 0; max-width: 80ch; }
     o.cards.push(rabbetAfterCard(d, F));
   };
 
+  /** Size and place the floating panel of a cope & stick door, in frame coordinates. */
+  function panelPlan(d, p) {
+    const raised = p.panelType === 'raised', cd = p.copeD, gw = p.grooveW;
+    // Solid wood hardly moves along the grain (up and down), so the top and bottom gaps stay small.
+    const gapW = p.panelGap, gapH = raised ? Math.min(p.panelGap, 0.0625) : p.panelGap;
+    const W = d.SW + 2 * (cd - gapW), H = d.SH + 2 * (cd - gapH);
+    const x0 = d.ws - cd + gapW, y0 = d.wB - cd + gapH;
+    return {
+      raised, W, H, t: p.panelT, gapW, gapH, x0, y0, x1: x0 + W, y1: y0 + H,
+      z0: (d.T - gw) / 2, tongue: gw, bevel: p.panelBevel,
+      field: { W: W - 2 * p.panelBevel, H: H - 2 * p.panelBevel },
+    };
+  }
+
   J.cope = (s, d, p, F, o) => {
     const cd = p.copeD, gw = p.grooveW;
     const shoulder = grooveFrame(s, d, p, F, o, cd, gw, 'cope');
     const tn = p.thr ? 'stiles' : 'rails';
-    o.cards.push({ title: 'Cope and stick', lines: [
+    const lines = [
       `Cope the ends of the ${tn} first, face down, with a backer block behind them to stop tear-out. Shoulder to shoulder: ${F.L(shoulder)}.`,
       'Then run the stick (profile) bit along every inside edge.',
       `This cut list assumes a cope depth of ${F.L(cd)}. Check yours on a test piece by measuring from the end to the shoulder; most sets cut 3/8" (9.5 mm).`,
-      'A glass-door set cuts a rabbet instead of a groove; otherwise rout the rabbet after glue-up.',
-      grooveShowCheck(d, gw, cd, F, o),
-    ] });
-    o.cards.push(rabbetAfterCard(d, F));
+    ];
+    if (!d.door) {
+      lines.push('A glass-door set cuts a rabbet instead of a groove; otherwise rout the rabbet after glue-up.', grooveShowCheck(d, gw, cd, F, o));
+      o.cards.push({ title: 'Cope and stick', lines });
+      o.cards.push(rabbetAfterCard(d, F));
+      return;
+    }
+    const pz = o.panel = panelPlan(d, p);
+    o.rows.push({ key: 'panel', name: pz.raised ? 'Raised panel' : 'Panel', qty: 1, length: pz.H, width: pz.W, thick: pz.t, angles: [0, 0],
+      ends: pz.raised ? 'Raised all round' : 'Square',
+      notes: pz.raised ? `Solid wood, grain running up and down; edges thinned to a ${F.L(gw)} tongue` : `Plywood or MDF; slides into the ${F.L(gw)} groove` });
+    o.lengthNote = `${p.thr ? 'Stiles' : 'Rails'} include ${F.L(cd)} at each end for the coped joint. The panel's length is its height.`;
+    lines.push('The groove holds the panel. Glue only the coped joints: a panel glued into its groove cracks when it moves.');
+    o.cards.push({ title: 'Cope and stick', lines });
+    const gaps = Math.abs(pz.gapW - pz.gapH) < 1e-6 ? `${F.L(pz.gapW)} at the bottom of the groove all round`
+      : `${F.L(pz.gapW)} at the bottom of the groove on each side and ${F.L(pz.gapH)} at the top and bottom`;
+    const pl = [`Cut the panel ${F.L(pz.W)} wide × ${F.L(pz.H)} tall: the opening plus the groove depth, less a gap of ${gaps}.`];
+    if (pz.raised) {
+      pl.push(`Glue it up from boards with the grain running up and down. The side gaps leave room for it to swell across the grain in humid weather.`);
+      pl.push(`Raise it with a panel-raising bit or on the table saw: a ${F.L(pz.bevel)} bevel all round that thins the edges to a ${F.L(gw)} tongue. The flat field is ${F.L(pz.field.W)} × ${F.L(pz.field.H)}.`);
+      if (pz.z0 + pz.t > d.T + 0.01) pl.push(`The field stands ${F.L(pz.z0 + pz.t - d.T)} proud of the frame face.`);
+    } else {
+      pl.push(`Use ${F.L(pz.t)} plywood or MDF. Sheet goods barely move, so a small gap is enough.`);
+    }
+    pl.push('Stain or finish the panel before glue-up, so no bare wood shows at the edges when it shrinks.');
+    pl.push('Put space balls (or dots of silicone) in the grooves to center the panel and stop it rattling.');
+    o.cards.push({ title: 'Floating panel', lines: pl });
+    if (!pz.raised && pz.t > gw + 1e-6) o.warnings.push({ level: 'warn', text: `A ${F.L(pz.t)} panel won't fit the ${F.L(gw)} groove. Rabbet its back edges to leave a ${F.L(gw)} tongue, or use ${F.L(gw)} plywood.` });
+    if (pz.raised && pz.t <= gw + 1e-6) o.warnings.push({ level: 'warn', text: 'A raised panel has to be thicker than the groove is wide. Make it thicker, or use a flat panel.' });
+    if (pz.raised && (pz.field.W <= 0.5 || pz.field.H <= 0.5)) o.warnings.push({ level: 'error', text: 'The bevels leave no flat field on the panel. Make the bevels narrower.' });
+    if (cd - pz.gapW < 0.125) o.warnings.push({ level: 'warn', text: `Less than 1/8" of the panel would sit in the groove. Make the gap smaller or the groove deeper.` });
   };
 
   J.butt = (s, d, p, F, o) => {
@@ -1303,6 +1375,16 @@ footer p { margin: 0; max-width: 80ch; }
 
   function addMaterials(s, d, p, F, o) {
     const q = s.qty;
+    if (d.door) {
+      const pz = o.panel;
+      const balls = 2 * Math.max(1, Math.floor(pz.H / 8)) + 2 * Math.max(1, Math.floor(pz.W / 10));
+      o.materials.unshift(
+        { name: pz.raised ? 'Panel stock, solid wood' : 'Panel, plywood or MDF', qty: q, size: `${F.L(pz.W)} × ${F.L(pz.H)} × ${F.L(pz.t)}`,
+          note: pz.raised ? 'glued up from boards, grain running up and down' : 'grain of the face veneer running up and down' },
+        { name: 'Space balls', qty: balls * q, size: '', note: `sized for a ${F.L(p.grooveW)} groove; or dots of silicone` },
+      );
+      return;
+    }
     const glass = `${F.L(d.GW)} × ${F.L(d.GH)}`;
     const base = [
       { name: 'Glass or acrylic', qty: q, size: glass, note: `rabbet opening ${F.L(d.RW)} × ${F.L(d.RH)} less ${F.L(d.c)}` },
@@ -1337,15 +1419,25 @@ footer p { margin: 0; max-width: 80ch; }
       if (j === 'mortise') st.push(`Cut the mortises (${F.L(p.tenonThick)} wide × ${F.L(p.tenonLen + 0.0625)} deep), then saw and pare the tenons to fit.`);
       if (j === 'tongue') st.push(`Groove every inside edge (${F.L(p.grooveW)} × ${F.L(p.grooveD)}), then cut the tongues with the same fence setting.`);
       if (j === 'cope') st.push('Cope the rail ends with a backer block, then stick every inside edge.');
+      if (d.door) {
+        const pz = o.panel;
+        st.push(pz.raised
+          ? `Glue up the panel blank, cut it to ${F.L(pz.W)} × ${F.L(pz.H)}, then raise all four edges to a ${F.L(p.grooveW)} tongue (end grain first, so the long-grain passes clean up any tear-out).`
+          : `Cut the panel to ${F.L(pz.W)} × ${F.L(pz.H)} from ${F.L(pz.t)} plywood or MDF.`);
+        st.push('Sand and finish the panel now, before it goes into the frame.');
+      }
       if (j === 'butt') {
         const label = { dowels: 'Drill the dowel holes with a doweling jig.', biscuits: 'Cut the biscuit slots.', pocket: 'Drill the pocket holes in the back of the joining pieces.', domino: 'Cut the loose-tenon mortises.' }[p.buttReinf];
         st.push(label);
       }
-      st.push(`Dry-fit, then glue up. Check that the diagonals match (${F.L(d.diag)} corner to corner on the outside).`);
+      st.push(d.door
+        ? `Dry-fit with the panel and space balls in place, then glue only the coped joints, keeping glue out of the panel groove. Check that the diagonals match (${F.L(d.diag)} corner to corner).`
+        : `Dry-fit, then glue up. Check that the diagonals match (${F.L(d.diag)} corner to corner on the outside).`);
       if (R > 0) st.push(`Rout the ${F.L(R)} × ${F.L(D)} rabbet around the back and square the corners with a chisel.`);
     }
-    st.push('Sand and finish.');
-    st.push(`Fit the glass, ${s.mat.on ? 'mat, ' : ''}artwork and backer, and hold them with points. Add D-rings and wire ${F.L(d.OH / 3)} down from the top.`);
+    st.push(d.door ? 'Sand and finish the frame.' : 'Sand and finish.');
+    st.push(d.door ? 'Fit hinges and a pull to suit the cabinet.'
+      : `Fit the glass, ${s.mat.on ? 'mat, ' : ''}artwork and backer, and hold them with points. Add D-rings and wire ${F.L(d.OH / 3)} down from the top.`);
     o.steps = st;
   }
 
@@ -1611,8 +1703,9 @@ footer p { margin: 0; max-width: 80ch; }
     const F = makeFmt(s);
     const d = solve(s, F);
     const p = resolveParams(s, d);
-    const out = { state: s, dims: d, params: p, joint: JOINT_BY_ID[s.joint], fmt: F,
-      rows: [], cards: [], materials: [], steps: [], warnings: d.warnings.slice(), cuts: [], layout: null, lengthNote: '' };
+    const out = { state: s, dims: d, params: p, joint: JOINT_BY_ID[s.joint], fmt: F, door: d.door, panel: null,
+      rows: [], cards: [], materials: [], steps: [], warnings: d.warnings.slice(), cuts: [], layout: null, lengthNote: '',
+      stockNote: d.door ? 'The panel is not part of this layout: cut it from plywood, or glue it up from boards.' : '' };
     out.ok = !out.warnings.some(w => w.level === 'error');
     if (!out.ok) return out;
     J[s.joint](s, d, p, F, out);
@@ -1640,7 +1733,7 @@ footer p { margin: 0; max-width: 80ch; }
 
   return {
     MM, DEG, JOINTS, JOINT_BY_ID, BISCUITS, DOMINOS,
-    defaultState, normalizeState, compute, solve, resolveParams,
+    defaultState, normalizeState, compute, solve, resolveParams, isDoor,
     lumberOptions, chooseBoards, planBuy, ripWidth,
     fmtLen, fmtAngle, parseLen, makeFmt, nice,
     fastenerPlan, bandFor, spread,
@@ -2136,6 +2229,24 @@ footer p { margin: 0; max-width: 80ch; }
       const rab = box(d.ws - d.R, d.OW - d.ws + d.R, d.wB - d.R, d.OH - d.wT + d.R, -1, d.D);
       solids = solids.flatMap(S => S.mat === 'metal' ? [S] : subtract(S, rab));
     }
+    if (R.panel) {
+      // A door's floating panel, in its groove. A raised panel is a box whose four edges are beveled
+      // down to a tongue the thickness of the groove, so it stays a single convex solid.
+      const pz = R.panel;
+      let P;
+      if (pz.raised && pz.t > pz.tongue + 1e-6 && pz.field.W > 0 && pz.field.H > 0) {
+        P = box(pz.x0, pz.x1, pz.y0, pz.y1, pz.z0, pz.z0 + pz.t);
+        const zt = pz.z0 + pz.tongue, k = (pz.t - pz.tongue) / pz.bevel;
+        const planes = [[[-k, 0, 1], zt - k * pz.x0], [[k, 0, 1], zt + k * pz.x1], [[0, -k, 1], zt - k * pz.y0], [[0, k, 1], zt + k * pz.y1]];
+        for (const [n, dd] of planes) { const l = Math.hypot(n[0], n[1], n[2]); if (P) P = clip(P, [n[0] / l, n[1] / l, n[2] / l], dd / l); }
+      } else if (pz.t <= pz.tongue + 1e-6) {
+        P = box(pz.x0, pz.x1, pz.y0, pz.y1, d.T / 2 - pz.t / 2, d.T / 2 + pz.t / 2);
+      } else {
+        P = box(pz.x0, pz.x1, pz.y0, pz.y1, pz.z0 + pz.tongue - pz.t, pz.z0 + pz.tongue);
+      }
+      if (P) solids.push(Object.assign(P, { piece: 'panel', mat: pz.raised ? 'panel' : 'ply', grain: [0, 1, 0], move: [0, 0, 1.6] }));
+      hidden.push({ pts: [[pz.x0, pz.y0], [pz.x1, pz.y0], [pz.x1, pz.y1], [pz.x0, pz.y1]], closed: true });
+    }
     if (opts.corner) {
       const stub = Math.max(d.ws, d.wT) * 1.7 + 1;
       const cx = Math.min(d.OW * 0.55, stub), cy = Math.min(d.OH * 0.55, stub);
@@ -2164,6 +2275,8 @@ footer p { margin: 0; max-width: 80ch; }
     accent: [94, 60, 38],
     hw: [238, 216, 166],
     metal: [164, 170, 180],
+    panel: [204, 150, 98],
+    ply: [234, 211, 170],
   };
   const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -2426,6 +2539,7 @@ footer p { margin: 0; max-width: 80ch; }
   const GROUP = { 'inner.w': 'opening', 'inner.h': 'opening', 'outside.w': 'outside', 'outside.h': 'outside', stile: 'widths', top: 'widths', bottom: 'widths' };
   const ALT = { outside: 'widths', opening: 'widths', widths: 'outside' };
   function innerWord() { return state.innerRef === 'sight' ? 'Opening' : state.mat.on ? 'Image' : 'Artwork'; }
+  const unitWord = () => (R && R.door ? 'door' : 'frame');
   function solveName(g) {
     if (g === 'outside') return 'the outside size';
     if (g === 'opening') return state.innerRef === 'sight' ? 'the visible opening' : state.mat.on ? 'the image size' : 'the artwork size';
@@ -2526,7 +2640,15 @@ footer p { margin: 0; max-width: 80ch; }
       { k: 'horn', type: 'len', label: 'Horns, each end' },
     ],
     tongue: [{ k: 'grooveW', type: 'len', label: 'Groove width' }, { k: 'grooveD', type: 'len', label: 'Groove depth' }],
-    cope: [{ k: 'copeD', type: 'len', label: 'Cope depth of your bits' }, { k: 'grooveW', type: 'len', label: 'Groove width' }],
+    cope: [
+      { k: 'copeUse', type: 'seg', label: 'Making a', opts: [['frame', 'Picture frame'], ['door', 'Panel door']] },
+      { k: 'copeD', type: 'len', label: 'Cope depth of your bits' },
+      { k: 'grooveW', type: 'len', label: 'Groove width' },
+      { k: 'panelType', type: 'select', label: 'Panel', opts: [['flat', 'Flat: plywood or MDF'], ['raised', 'Raised: solid wood']], when: p => p.copeUse === 'door' },
+      { k: 'panelT', type: 'len', label: 'Panel thickness', when: p => p.copeUse === 'door' },
+      { k: 'panelGap', type: 'len', label: 'Gap in the groove', when: p => p.copeUse === 'door' },
+      { k: 'panelBevel', type: 'len', label: 'Bevel width', when: p => p.copeUse === 'door' && p.panelType === 'raised' },
+    ],
     butt: [
       { k: 'buttReinf', type: 'select', label: 'Reinforcement', opts: [['dowels', 'Dowels'], ['biscuits', 'Biscuits'], ['pocket', 'Pocket screws'], ['domino', 'Loose tenons (Domino)']] },
       { k: 'dowelDia', type: 'len', label: 'Dowel diameter', when: p => p.buttReinf === 'dowels' },
@@ -2540,13 +2662,17 @@ footer p { margin: 0; max-width: 80ch; }
     const box = $('#joint-fields');
     const sig = state.joint + '|' + defs.map(f => f.k).join(',');
     if (box.dataset.sig !== sig) {
-      box.innerHTML = defs.map(f => f.type === 'select'
+      // Choices that change what is being built (frame or door) go above everything else.
+      $('#joint-top').innerHTML = defs.filter(f => f.type === 'seg').map(f =>
+        `<div class="field"><span class="lbl" id="lbl-jp-${f.k}">${esc(f.label)}</span><div class="seg seg-wide" data-seg="jp:${f.k}" role="group" aria-labelledby="lbl-jp-${f.k}">${f.opts.map(([v, t]) => `<button type="button" data-val="${v}">${esc(t)}</button>`).join('')}</div></div>`).join('');
+      box.innerHTML = defs.filter(f => f.type !== 'seg').map(f => f.type === 'select'
         ? `<label class="field span2"><span class="lbl">${esc(f.label)}</span><span class="inp"><select id="jp-${f.k}" data-jp="${f.k}" data-type="select">${f.opts.map(([v, t]) => `<option value="${v}">${esc(t)}</option>`).join('')}</select></span></label>`
         : `<label class="field"><span class="lbl">${esc(f.label)}<span class="auto" data-auto="${f.k}"></span></span><span class="inp"><input id="jp-${f.k}" data-jp="${f.k}" spellcheck="false"><span class="u"></span></span></label>`).join('')
         || '<p class="help span2">This joint has no extra settings.</p>';
       box.dataset.sig = sig;
     }
     for (const f of defs) {
+      if (f.type === 'seg') { setSeg(`jp:${f.k}`, p[f.k]); continue; }
       const el = $(`#jp-${f.k}`);
       if (!el) continue;
       if (f.type === 'select') { el.value = String(p[f.k]); continue; }
@@ -2561,7 +2687,7 @@ footer p { margin: 0; max-width: 80ch; }
   function renderForm() {
     const s = state;
     const unit = s.units === 'mm' ? 'mm' : 'in';
-    for (const el of $$('#inspector [data-path]')) {
+    for (const el of $$('form.inputs [data-path]')) {
       const path = el.dataset.path, kind = el.dataset.kind || 'len';
       const v = getPath(s, path);
       if (kind === 'bool') { el.checked = !!v; continue; }
@@ -2585,6 +2711,10 @@ footer p { margin: 0; max-width: 80ch; }
     }
     sel.value = String(s.units === 'mm' ? s.precMm : s.precIn);
     renderStockForm();
+    const door = !!R.door;
+    $('#lg-size').textContent = door ? 'Door' : 'Frame';
+    $('#lbl-qty').textContent = door ? 'Doors to make' : 'Frames to make';
+    for (const id of ['ref-field', 'clear-field', 'rabbet-fields', 'rabbet-help', 'mat-fs']) $('#' + id).hidden = door;
     const j = R.joint;
     $('#through-field').hidden = !j.through;
     $('#lbl-through').textContent = THROUGH_LABEL[s.joint] || 'Runs through';
@@ -2610,7 +2740,7 @@ footer p { margin: 0; max-width: 80ch; }
       const el = $('#' + id);
       el.disabled = mold;
       el.closest('.field').classList.toggle('locked', mold);
-      el.title = mold ? 'Set by the molding profile under Stock and cutting' : '';
+      el.title = mold ? 'Set by the molding profile in the Stock section' : '';
     }
     if (mold) $('#f-link').disabled = true;
     const wb = $('[data-seg="solve"] button[data-val="widths"]');
@@ -2685,7 +2815,9 @@ footer p { margin: 0; max-width: 80ch; }
   }
 
   function bindInspector() {
-    const form = $('#inspector');
+    for (const form of $$('form.inputs')) bindForm(form);
+  }
+  function bindForm(form) {
     form.addEventListener('submit', e => e.preventDefault());
     form.addEventListener('change', e => {
       const t = e.target;
@@ -2699,6 +2831,8 @@ footer p { margin: 0; max-width: 80ch; }
     });
     form.addEventListener('focusin', e => { if (e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') e.target.select(); });
     form.addEventListener('click', e => {
+      const step = e.target.closest('[data-step]');
+      if (step) { e.preventDefault(); clearBad($('#f-qty')); update(s => { s.qty = clamp(s.qty + +step.dataset.step, 1, 99); }); return; }
       if (e.target.closest('#add-board')) {
         e.preventDefault();
         // Start from the last board listed, or a common board: 1x4 at 8 ft, or 18 x 94 mm at 2.4 m.
@@ -2738,9 +2872,26 @@ footer p { margin: 0; max-width: 80ch; }
       }
       else if (seg === 'through') update(s => { s.through = val; });
       else if (seg === 'source') update(s => { s.stock.source = val; });
+      else if (seg.startsWith('jp:')) setJpSeg(seg.slice(3), val);
       else if (seg === 'vmode') { view.mode = val; cornerPrep = null; schedule(); }
       else if (seg === 'vangle') { view.angle = val; [view.yaw, view.pitch] = ANGLES[val]; schedule(); }
     });
+  }
+
+  function setJpSeg(k, val) {
+    if (k !== 'copeUse') return update(s => { s.jp[k] = val; });
+    if (val === R.params.copeUse) return;
+    const d = R.dims, ok = R.ok;
+    update(s => {
+      if (val === 'door') {
+        // Keep the same outside size: the opening becomes the panel opening, and the door is sized from outside.
+        if (ok) s.inner = { w: d.SW, h: d.SH };
+        s.innerRef = 'sight';
+        if (s.solve === 'outside') s.solve = 'opening';
+        s.jp.copeUse = 'door';
+      } else delete s.jp.copeUse;
+    });
+    toast(val === 'door' ? 'Panel door: set the door\'s outside size and the panel is worked out' : 'Back to a picture frame');
   }
 
   /* ---------- Front view ---------- */
@@ -2797,7 +2948,9 @@ footer p { margin: 0; max-width: 80ch; }
     const gx0 = d.ws - d.R + d.c / 2, gy0 = d.wB - d.R + d.c / 2;
     let u = '<defs><pattern id="arthatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="9" height="9" fill="var(--art-b)"/><rect width="3" height="9" fill="var(--art-a)"/></pattern></defs>';
     const rect = (x0, y0, w, h, attrs) => `<rect x="${X(x0).toFixed(1)}" y="${Y(y0 + h).toFixed(1)}" width="${(w * sc).toFixed(1)}" height="${(h * sc).toFixed(1)}" ${attrs}/>`;
-    if (s.mat.on) {
+    if (R.door) {
+      // The panel is part of the 3D model, so nothing goes under the frame.
+    } else if (s.mat.on) {
       u += rect(gx0, gy0, d.GW, d.GH, 'fill="var(--mat-board)"');
       u += rect(gx0 + s.mat.side, gy0 + s.mat.bottom, d.MW, d.MH, 'fill="url(#arthatch)" stroke="rgba(0,0,0,.25)" stroke-width="1.5"');
     } else {
@@ -2807,7 +2960,7 @@ footer p { margin: 0; max-width: 80ch; }
 
     // Hidden joinery, rabbet and dimensions (drawn over the frame).
     let o = '';
-    o += `<rect class="rabbet-line" x="${X(d.ws - d.R).toFixed(1)}" y="${Y(d.OH - d.wT + d.R).toFixed(1)}" width="${(d.RW * sc).toFixed(1)}" height="${(d.RH * sc).toFixed(1)}"/>`;
+    if (d.R > 0) o += `<rect class="rabbet-line" x="${X(d.ws - d.R).toFixed(1)}" y="${Y(d.OH - d.wT + d.R).toFixed(1)}" width="${(d.RW * sc).toFixed(1)}" height="${(d.RH * sc).toFixed(1)}"/>`;
     for (const h of frontModel.hidden) {
       const pts = h.pts.map(q => `${X(q[0]).toFixed(1)},${Y(q[1]).toFixed(1)}`).join(' ');
       o += h.closed ? `<polygon class="hidden-line" points="${pts}"/>` : `<polyline class="hidden-line" points="${pts}"/>`;
@@ -2836,8 +2989,8 @@ footer p { margin: 0; max-width: 80ch; }
     const cx = X(d.OW / 2), cy = Y(d.wB + d.SH / 2);
     const tw = L(s.inner.w), th = L(s.inner.h);
     const ww = chipW(tw), wh = chipW(th);
-    const word = { Artwork: 'Artwork', Image: 'Image', Opening: 'Visible opening' }[innerWord()];
-    const sub = s.innerRef === 'sight' ? `glass ${L(d.GW)} × ${L(d.GH)}` : s.mat.on ? `mat window ${L(d.MW)} × ${L(d.MH)}` : `opening ${L(d.SW)} × ${L(d.SH)}`;
+    const word = R.door ? 'Panel opening' : { Artwork: 'Artwork', Image: 'Image', Opening: 'Visible opening' }[innerWord()];
+    const sub = R.door ? `panel ${L(R.panel.W)} × ${L(R.panel.H)}` : s.innerRef === 'sight' ? `glass ${L(d.GW)} × ${L(d.GH)}` : s.mat.on ? `mat window ${L(d.MW)} × ${L(d.MH)}` : `opening ${L(d.SW)} × ${L(d.SH)}`;
     // Drop the secondary line when the opening is too narrow on screen to hold it.
     const roomy = sub.length * 7.1 + 20 <= d.SW * sc - 12;
     const boxW = Math.max(ww + wh + 40, roomy ? sub.length * 7.1 + 20 : 0, 120);
@@ -2995,12 +3148,15 @@ footer p { margin: 0; max-width: 80ch; }
     const s = state, d = R.dims;
     $('#warnings').innerHTML = R.warnings.map(w =>
       `<div class="warn ${w.level}"><b>${w.level === 'error' ? 'Fix' : 'Check'}</b><span>${fr(w.text)}</span></div>`).join('');
-    const items = [['Outside', `${L(d.OW)} × ${L(d.OH)}`], ['Visible opening', `${L(d.SW)} × ${L(d.SH)}`],
-      ['Rabbet opening', `${L(d.RW)} × ${L(d.RH)}`], ['Glass and backer', `${L(d.GW)} × ${L(d.GH)}`]];
-    if (s.mat.on) items.push(['Image', `${L(d.IW)} × ${L(d.IH)}`], ['Mat window', `${L(d.MW)} × ${L(d.MH)}`]);
+    const items = R.door
+      ? [['Door', `${L(d.OW)} × ${L(d.OH)}`], ['Panel opening', `${L(d.SW)} × ${L(d.SH)}`]]
+      : [['Outside', `${L(d.OW)} × ${L(d.OH)}`], ['Visible opening', `${L(d.SW)} × ${L(d.SH)}`],
+        ['Rabbet opening', `${L(d.RW)} × ${L(d.RH)}`], ['Glass and backer', `${L(d.GW)} × ${L(d.GH)}`]];
+    if (R.door && R.panel) items.push(['Panel', `${L(R.panel.W)} × ${L(R.panel.H)}`], ['Panel thickness', L(R.panel.t)]);
+    if (!R.door && s.mat.on) items.push(['Image', `${L(d.IW)} × ${L(d.IH)}`], ['Mat window', `${L(d.MW)} × ${L(d.MH)}`]);
     $('#sum').innerHTML = items.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${fr(v)}</dd></div>`).join('');
-    $('#bar-sum').innerHTML = `${esc(R.joint.name)} · ${fr(`${L(d.OW)} × ${L(d.OH)}`)}`;
-    $('#cut-sub').textContent = `${R.joint.name} frame${s.qty > 1 ? ` · ${s.qty} frames` : ''}`;
+    $('#bar-sum').innerHTML = `${esc(R.joint.name)}${R.door ? ' door' : ''} · ${fr(`${L(d.OW)} × ${L(d.OH)}`)}${s.qty > 1 ? ` · ×${s.qty}` : ''}`;
+    $('#cut-sub').textContent = `${R.joint.name} ${unitWord()}, for ${plural(s.qty, unitWord())}`;
     if (!R.ok) {
       $('#cuts').innerHTML = ''; $('#cut-note').textContent = ''; $('#cards').innerHTML = ''; $('#mats').innerHTML = '';
       $('#layout').innerHTML = ''; $('#suggest').hidden = true; $('#stock-sum').textContent = ''; $('#stock-sub').textContent = ''; $('#steps-list').innerHTML = '';
@@ -3067,9 +3223,13 @@ footer p { margin: 0; max-width: 80ch; }
     if (!own) h += `<button type="button" class="btn" id="use-suggest">Lay out on these boards</button>`;
     box.innerHTML = h;
   }
-  function useSuggest() {
+  function useSuggest(btn) {
     const n = state.stock.boards.length;
-    if (n && !confirm(`Replace the ${n === 1 ? 'board' : `${n} boards`} on your list with the suggested ones?`)) return;
+    if (n && btn.dataset.confirm !== '1') {
+      btn.dataset.confirm = '1';
+      btn.textContent = `Replace the ${n === 1 ? 'board' : `${n} boards`} on your list?`;
+      return;
+    }
     update(s => { s.stock.source = 'boards'; s.stock.boards = []; s.stock.buy = true; });
     toast('Laid out on the suggested boards');
   }
@@ -3081,9 +3241,10 @@ footer p { margin: 0; max-width: 80ch; }
     const minLane = Math.min(...lay.boards.flatMap(b => b.lanes.map(l => l.width)), 99);
     const vs = Math.min(40, Math.max(8, 24 / minLane));
     const have = lay.totalBoards - lay.buyCount;
-    $('#stock-sub').textContent = `${plural(lay.totalBoards, 'board')}${lay.buyCount && have ? `, ${lay.buyCount} to buy` : lay.buyCount ? ' to buy' : ''}`;
+    $('#stock-sub').textContent = `${plural(lay.totalBoards, 'board')}${lay.buyCount && have ? `, ${lay.buyCount} to buy` : lay.buyCount ? ' to buy' : ''}, for ${plural(state.qty, unitWord())}`;
     let sum = lay.totalBoards ? `${have ? `${have} of your boards used` : ''}${have && lay.buyCount ? '; ' : ''}${lay.buyCount ? `buy ${boardsText(countBoards(lay.boards.filter(b => b.src === 'buy')), lay.boardLength)}` : ''}. ${Math.round(lay.waste * 100)}% of the wood is left over.` : 'Add boards, or let it buy them.';
     if (R.notes) sum += ' ' + R.notes.join(' ');
+    if (R.stockNote) sum += ' ' + R.stockNote;
     $('#stock-sum').innerHTML = fr(sum);
     box.innerHTML = lay.boards.map((b, bi) => {
       const H = Math.round(b.w * vs), bw = b.l * k;
@@ -3133,8 +3294,9 @@ footer p { margin: 0; max-width: 80ch; }
     const rowH = 30, gap = 12;
     const s = state;
     const unit = s.stock.source === 'molding' ? 'length' : 'board';
-    $('#stock-sub').textContent = `${plural(lay.totalBoards, unit)} of ${L(lay.boardLength)}`;
+    $('#stock-sub').textContent = `${plural(lay.totalBoards, unit)} of ${L(lay.boardLength)}, for ${plural(s.qty, unitWord())}`;
     let sum = `${plural(lay.totalBoards, unit)}, ${Math.round(lay.waste * 100)}% left over as offcuts and kerf.`;
+    if (R.stockNote) sum += ' ' + R.stockNote;
     if (s.stock.source === 'molding' && (s.joint === 'miter' || s.joint === 'miterspline')) sum += ` Buying molding? The usual rule of thumb is the perimeter plus 8 × the width: ${s.units === 'mm' ? L(lay.moldingRule) : `${(lay.moldingRule / 12).toFixed(1)} ft`}.`;
     $('#stock-sum').innerHTML = fr(sum);
     box.innerHTML = lay.groups.map((g, gi) => {
@@ -3174,9 +3336,10 @@ footer p { margin: 0; max-width: 80ch; }
 
   function cutListText() {
     const s = state, d = R.dims;
-    const out = [`Frame Designer: ${R.joint.name} frame${s.qty > 1 ? ` (${s.qty} frames)` : ''}`,
-      `Outside ${L(d.OW)} x ${L(d.OH)}   Opening ${L(d.SW)} x ${L(d.SH)}   Glass ${L(d.GW)} x ${L(d.GH)}`,
-      `Stock ${L(d.T)} thick, rabbet ${L(d.R)} x ${L(d.D)}`, ''];
+    const out = [`Frame Designer: ${R.joint.name} ${unitWord()}, ${plural(s.qty, unitWord())}`,
+      R.door ? `Door ${L(d.OW)} x ${L(d.OH)}   Panel opening ${L(d.SW)} x ${L(d.SH)}   Panel ${L(R.panel.W)} x ${L(R.panel.H)} x ${L(R.panel.t)}`
+        : `Outside ${L(d.OW)} x ${L(d.OH)}   Opening ${L(d.SW)} x ${L(d.SH)}   Glass ${L(d.GW)} x ${L(d.GH)}`,
+      R.door ? `Stock ${L(d.T)} thick` : `Stock ${L(d.T)} thick, rabbet ${L(d.R)} x ${L(d.D)}`, ''];
     const rows = [['Part', 'Qty', 'Length', 'Width', 'Ends', 'Joinery']]
       .concat(R.rows.map(r => [r.name, String(r.qtyTotal), L(r.length), L(r.width), r.ends || '', r.notes || '']));
     const w = rows[0].map((_, i) => Math.max(...rows.map(r => r[i].length)));
@@ -3245,7 +3408,7 @@ footer p { margin: 0; max-width: 80ch; }
         renderDesigns();
       }
     });
-    $('#suggest').addEventListener('click', e => { if (e.target.closest('#use-suggest')) useSuggest(); });
+    $('#suggest').addEventListener('click', e => { const b = e.target.closest('#use-suggest'); if (b) useSuggest(b); });
     $('#btn-copy').addEventListener('click', () => { if (R.ok) copyText(cutListText(), 'Cut list copied'); });
     if (!inFrame) {
       const link = $('#btn-link');

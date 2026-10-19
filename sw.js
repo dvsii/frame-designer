@@ -1,6 +1,6 @@
 /* Frame Designer service worker: lets the installed app open offline.
    Network first, so a deployed update shows up on the next load; the cache is the fallback. */
-const CACHE = 'frame-designer-v2';
+const CACHE = 'frame-designer-v3';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'js/core.js', 'js/geom.js', 'js/render.js', 'js/app.js',

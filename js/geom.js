@@ -486,6 +486,24 @@
       const rab = box(d.ws - d.R, d.OW - d.ws + d.R, d.wB - d.R, d.OH - d.wT + d.R, -1, d.D);
       solids = solids.flatMap(S => S.mat === 'metal' ? [S] : subtract(S, rab));
     }
+    if (R.panel) {
+      // A door's floating panel, in its groove. A raised panel is a box whose four edges are beveled
+      // down to a tongue the thickness of the groove, so it stays a single convex solid.
+      const pz = R.panel;
+      let P;
+      if (pz.raised && pz.t > pz.tongue + 1e-6 && pz.field.W > 0 && pz.field.H > 0) {
+        P = box(pz.x0, pz.x1, pz.y0, pz.y1, pz.z0, pz.z0 + pz.t);
+        const zt = pz.z0 + pz.tongue, k = (pz.t - pz.tongue) / pz.bevel;
+        const planes = [[[-k, 0, 1], zt - k * pz.x0], [[k, 0, 1], zt + k * pz.x1], [[0, -k, 1], zt - k * pz.y0], [[0, k, 1], zt + k * pz.y1]];
+        for (const [n, dd] of planes) { const l = Math.hypot(n[0], n[1], n[2]); if (P) P = clip(P, [n[0] / l, n[1] / l, n[2] / l], dd / l); }
+      } else if (pz.t <= pz.tongue + 1e-6) {
+        P = box(pz.x0, pz.x1, pz.y0, pz.y1, d.T / 2 - pz.t / 2, d.T / 2 + pz.t / 2);
+      } else {
+        P = box(pz.x0, pz.x1, pz.y0, pz.y1, pz.z0 + pz.tongue - pz.t, pz.z0 + pz.tongue);
+      }
+      if (P) solids.push(Object.assign(P, { piece: 'panel', mat: pz.raised ? 'panel' : 'ply', grain: [0, 1, 0], move: [0, 0, 1.6] }));
+      hidden.push({ pts: [[pz.x0, pz.y0], [pz.x1, pz.y0], [pz.x1, pz.y1], [pz.x0, pz.y1]], closed: true });
+    }
     if (opts.corner) {
       const stub = Math.max(d.ws, d.wT) * 1.7 + 1;
       const cx = Math.min(d.OW * 0.55, stub), cy = Math.min(d.OH * 0.55, stub);

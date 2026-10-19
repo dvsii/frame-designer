@@ -26,7 +26,7 @@
     { id: 'tongue', name: 'Tongue & groove', through: true,
       blurb: 'A groove runs along every inside edge and short tongues on the rails fit into it. Quick with a dado stack or slot cutter.' },
     { id: 'cope', name: 'Cope & stick', through: true,
-      blurb: 'Matched router bits profile the inside edges and cope the rail ends to fit over them, as on a cabinet door.' },
+      blurb: 'Matched router bits profile the inside edges and cope the rail ends to fit over them. Build a picture frame, or switch to a panel door with a floating flat or raised panel.' },
     { id: 'butt', name: 'Butt joint', through: true,
       blurb: 'Square-cut ends held with dowels, biscuits, pocket screws or loose tenons. The fastest frame to make.' },
   ];
@@ -72,6 +72,8 @@
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function num(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
+  /** Cope & stick can build a frame-and-panel door instead of a picture frame. */
+  function isDoor(s) { return s.joint === 'cope' && !!s.jp && s.jp.copeUse === 'door'; }
 
   function normalizeState(input) {
     const base = defaultState();
@@ -110,6 +112,8 @@
       s.linkWidths = true;
       if (s.solve === 'widths') s.solve = 'outside';
     }
+    // A door is sized by its opening: there is no rabbet, glass or mat.
+    if (isDoor(s)) s.innerRef = 'sight';
     if (s.solve === 'widths') s.linkWidths = false;
     if (s.linkWidths) s.top = s.bottom = s.stile;
     return s;
@@ -212,9 +216,10 @@
 
   /** Work out every size from the state. Writes the calculated values back into s. */
   function solve(s, F) {
-    const R = Math.max(0, s.rabbetW), c = Math.max(0, s.clearance);
-    const mo = matOffsets(s);
-    const toSight = s.innerRef === 'sight' ? { w: 0, h: 0 } : { w: mo.w + c - 2 * R, h: mo.h + c - 2 * R };
+    const door = isDoor(s);
+    const R = door ? 0 : Math.max(0, s.rabbetW), c = door ? 0 : Math.max(0, s.clearance);
+    const mo = door ? { w: 0, h: 0 } : matOffsets(s);
+    const toSight = door || s.innerRef === 'sight' ? { w: 0, h: 0 } : { w: mo.w + c - 2 * R, h: mo.h + c - 2 * R };
     let SW, SH;
     if (s.solve === 'opening') {
       SW = s.outside.w - 2 * s.stile;
@@ -238,11 +243,11 @@
     const d = {
       OW: s.outside.w, OH: s.outside.h, SW, SH,
       RW: SW + 2 * R, RH: SH + 2 * R, GW: SW + 2 * R - c, GH: SH + 2 * R - c,
-      ws: s.stile, wT: s.top, wB: s.bottom, T: s.thickness, R, D: Math.max(0, s.rabbetD), c,
-      warnings: [],
+      ws: s.stile, wT: s.top, wB: s.bottom, T: s.thickness, R, D: door ? 0 : Math.max(0, s.rabbetD), c,
+      door, warnings: [],
     };
     d.diag = Math.hypot(d.OW, d.OH);
-    if (s.mat.on) {
+    if (s.mat.on && !door) {
       d.IW = d.GW - mo.w; d.IH = d.GH - mo.h;
       d.MW = d.IW - 2 * s.mat.overlap; d.MH = d.IH - 2 * s.mat.overlap;
     }
@@ -252,12 +257,12 @@
     const minW = Math.min(d.ws, d.wT, d.wB);
     if (minW <= 0) err('A rail or stile width is zero or less. Make the outside size bigger or the artwork smaller.');
     else if (minW <= R + 0.125) err(`Every frame member must be wider than the rabbet (${F.L(R)}) by at least 1/8". Widen the members or narrow the rabbet.`);
-    if (SW <= 0 || SH <= 0) err('The sight opening has no room left. Make the outside size bigger or the members narrower.');
+    if (SW <= 0 || SH <= 0) err(door ? 'The panel opening has no room left. Make the door bigger or the stiles and rails narrower.' : 'The sight opening has no room left. Make the outside size bigger or the members narrower.');
     if (d.T <= 0) err('Stock thickness must be greater than zero.');
     else if (d.D >= d.T) err('The rabbet is as deep as the stock is thick. Make it shallower.');
     else if (d.T - d.D < 0.1875) warn(`The lip in front of the rabbet is only ${F.L(d.T - d.D)} thick and may break off. Aim for at least 1/4".`);
-    if (d.GW <= 0 || d.GH <= 0) err('The glass size works out to zero or less. Check the artwork size and the rabbet width.');
-    if (s.mat.on && (d.MW <= 0 || d.MH <= 0)) err('The mat window is too small. Reduce the mat borders or the overlap.');
+    if (!door && (d.GW <= 0 || d.GH <= 0)) err('The glass size works out to zero or less. Check the artwork size and the rabbet width.');
+    if (!door && s.mat.on && (d.MW <= 0 || d.MH <= 0)) err('The mat window is too small. Reduce the mat borders or the overlap.');
     if (R > 0 && d.D > 0 && d.D < 0.125) warn('A rabbet under 1/8" deep will not hold glass, art and backer. Most frames need 3/8" or more.');
     return d;
   }
@@ -302,6 +307,16 @@
     p.grooveW = pos('grooveW', Math.max(nice(T / 3, u), 0.0625));
     p.grooveD = pos('grooveD', Math.max(0.125, nice(Math.min(0.375, Math.min(d.ws, d.wT, d.wB) / 4), u)));
     p.copeD = pos('copeD', u === 'mm' ? 9.5 / MM : 0.375);
+
+    // Panel door (cope & stick). The panel floats in the groove with a gap at the bottom of it on every side;
+    // solid wood moves across the grain about 1/8" per foot of width between seasons, plywood barely at all.
+    p.copeUse = pickEnum('copeUse', 'frame', ['frame', 'door']);
+    p.panelType = pickEnum('panelType', 'flat', ['flat', 'raised']);
+    const raised = p.panelType === 'raised';
+    p.panelT = pos('panelT', raised ? Math.max(p.grooveW + 0.125, nice(Math.min(0.625, T - 0.125), u)) : p.grooveW);
+    p.panelBevel = pos('panelBevel', Math.max(0.25, nice(Math.min(u === 'mm' ? 38 / MM : 1.5, Math.min(d.SW, d.SH) / 5), u)));
+    const across = Math.max(0, d.SW) + 2 * p.copeD;
+    p.panelGap = pos('panelGap', raised ? Math.max(0.0625, Math.ceil(across * 0.0052 * 16) / 16) : (u === 'mm' ? 1.5 / MM : 0.0625));
 
     p.buttReinf = pickEnum('buttReinf', 'dowels', ['dowels', 'biscuits', 'pocket', 'domino']);
     const sizes = dowelSizes(u);
@@ -617,18 +632,59 @@
     o.cards.push(rabbetAfterCard(d, F));
   };
 
+  /** Size and place the floating panel of a cope & stick door, in frame coordinates. */
+  function panelPlan(d, p) {
+    const raised = p.panelType === 'raised', cd = p.copeD, gw = p.grooveW;
+    // Solid wood hardly moves along the grain (up and down), so the top and bottom gaps stay small.
+    const gapW = p.panelGap, gapH = raised ? Math.min(p.panelGap, 0.0625) : p.panelGap;
+    const W = d.SW + 2 * (cd - gapW), H = d.SH + 2 * (cd - gapH);
+    const x0 = d.ws - cd + gapW, y0 = d.wB - cd + gapH;
+    return {
+      raised, W, H, t: p.panelT, gapW, gapH, x0, y0, x1: x0 + W, y1: y0 + H,
+      z0: (d.T - gw) / 2, tongue: gw, bevel: p.panelBevel,
+      field: { W: W - 2 * p.panelBevel, H: H - 2 * p.panelBevel },
+    };
+  }
+
   J.cope = (s, d, p, F, o) => {
     const cd = p.copeD, gw = p.grooveW;
     const shoulder = grooveFrame(s, d, p, F, o, cd, gw, 'cope');
     const tn = p.thr ? 'stiles' : 'rails';
-    o.cards.push({ title: 'Cope and stick', lines: [
+    const lines = [
       `Cope the ends of the ${tn} first, face down, with a backer block behind them to stop tear-out. Shoulder to shoulder: ${F.L(shoulder)}.`,
       'Then run the stick (profile) bit along every inside edge.',
       `This cut list assumes a cope depth of ${F.L(cd)}. Check yours on a test piece by measuring from the end to the shoulder; most sets cut 3/8" (9.5 mm).`,
-      'A glass-door set cuts a rabbet instead of a groove; otherwise rout the rabbet after glue-up.',
-      grooveShowCheck(d, gw, cd, F, o),
-    ] });
-    o.cards.push(rabbetAfterCard(d, F));
+    ];
+    if (!d.door) {
+      lines.push('A glass-door set cuts a rabbet instead of a groove; otherwise rout the rabbet after glue-up.', grooveShowCheck(d, gw, cd, F, o));
+      o.cards.push({ title: 'Cope and stick', lines });
+      o.cards.push(rabbetAfterCard(d, F));
+      return;
+    }
+    const pz = o.panel = panelPlan(d, p);
+    o.rows.push({ key: 'panel', name: pz.raised ? 'Raised panel' : 'Panel', qty: 1, length: pz.H, width: pz.W, thick: pz.t, angles: [0, 0],
+      ends: pz.raised ? 'Raised all round' : 'Square',
+      notes: pz.raised ? `Solid wood, grain running up and down; edges thinned to a ${F.L(gw)} tongue` : `Plywood or MDF; slides into the ${F.L(gw)} groove` });
+    o.lengthNote = `${p.thr ? 'Stiles' : 'Rails'} include ${F.L(cd)} at each end for the coped joint. The panel's length is its height.`;
+    lines.push('The groove holds the panel. Glue only the coped joints: a panel glued into its groove cracks when it moves.');
+    o.cards.push({ title: 'Cope and stick', lines });
+    const gaps = Math.abs(pz.gapW - pz.gapH) < 1e-6 ? `${F.L(pz.gapW)} at the bottom of the groove all round`
+      : `${F.L(pz.gapW)} at the bottom of the groove on each side and ${F.L(pz.gapH)} at the top and bottom`;
+    const pl = [`Cut the panel ${F.L(pz.W)} wide × ${F.L(pz.H)} tall: the opening plus the groove depth, less a gap of ${gaps}.`];
+    if (pz.raised) {
+      pl.push(`Glue it up from boards with the grain running up and down. The side gaps leave room for it to swell across the grain in humid weather.`);
+      pl.push(`Raise it with a panel-raising bit or on the table saw: a ${F.L(pz.bevel)} bevel all round that thins the edges to a ${F.L(gw)} tongue. The flat field is ${F.L(pz.field.W)} × ${F.L(pz.field.H)}.`);
+      if (pz.z0 + pz.t > d.T + 0.01) pl.push(`The field stands ${F.L(pz.z0 + pz.t - d.T)} proud of the frame face.`);
+    } else {
+      pl.push(`Use ${F.L(pz.t)} plywood or MDF. Sheet goods barely move, so a small gap is enough.`);
+    }
+    pl.push('Stain or finish the panel before glue-up, so no bare wood shows at the edges when it shrinks.');
+    pl.push('Put space balls (or dots of silicone) in the grooves to center the panel and stop it rattling.');
+    o.cards.push({ title: 'Floating panel', lines: pl });
+    if (!pz.raised && pz.t > gw + 1e-6) o.warnings.push({ level: 'warn', text: `A ${F.L(pz.t)} panel won't fit the ${F.L(gw)} groove. Rabbet its back edges to leave a ${F.L(gw)} tongue, or use ${F.L(gw)} plywood.` });
+    if (pz.raised && pz.t <= gw + 1e-6) o.warnings.push({ level: 'warn', text: 'A raised panel has to be thicker than the groove is wide. Make it thicker, or use a flat panel.' });
+    if (pz.raised && (pz.field.W <= 0.5 || pz.field.H <= 0.5)) o.warnings.push({ level: 'error', text: 'The bevels leave no flat field on the panel. Make the bevels narrower.' });
+    if (cd - pz.gapW < 0.125) o.warnings.push({ level: 'warn', text: `Less than 1/8" of the panel would sit in the groove. Make the gap smaller or the groove deeper.` });
   };
 
   J.butt = (s, d, p, F, o) => {
@@ -700,6 +756,16 @@
 
   function addMaterials(s, d, p, F, o) {
     const q = s.qty;
+    if (d.door) {
+      const pz = o.panel;
+      const balls = 2 * Math.max(1, Math.floor(pz.H / 8)) + 2 * Math.max(1, Math.floor(pz.W / 10));
+      o.materials.unshift(
+        { name: pz.raised ? 'Panel stock, solid wood' : 'Panel, plywood or MDF', qty: q, size: `${F.L(pz.W)} × ${F.L(pz.H)} × ${F.L(pz.t)}`,
+          note: pz.raised ? 'glued up from boards, grain running up and down' : 'grain of the face veneer running up and down' },
+        { name: 'Space balls', qty: balls * q, size: '', note: `sized for a ${F.L(p.grooveW)} groove; or dots of silicone` },
+      );
+      return;
+    }
     const glass = `${F.L(d.GW)} × ${F.L(d.GH)}`;
     const base = [
       { name: 'Glass or acrylic', qty: q, size: glass, note: `rabbet opening ${F.L(d.RW)} × ${F.L(d.RH)} less ${F.L(d.c)}` },
@@ -734,15 +800,25 @@
       if (j === 'mortise') st.push(`Cut the mortises (${F.L(p.tenonThick)} wide × ${F.L(p.tenonLen + 0.0625)} deep), then saw and pare the tenons to fit.`);
       if (j === 'tongue') st.push(`Groove every inside edge (${F.L(p.grooveW)} × ${F.L(p.grooveD)}), then cut the tongues with the same fence setting.`);
       if (j === 'cope') st.push('Cope the rail ends with a backer block, then stick every inside edge.');
+      if (d.door) {
+        const pz = o.panel;
+        st.push(pz.raised
+          ? `Glue up the panel blank, cut it to ${F.L(pz.W)} × ${F.L(pz.H)}, then raise all four edges to a ${F.L(p.grooveW)} tongue (end grain first, so the long-grain passes clean up any tear-out).`
+          : `Cut the panel to ${F.L(pz.W)} × ${F.L(pz.H)} from ${F.L(pz.t)} plywood or MDF.`);
+        st.push('Sand and finish the panel now, before it goes into the frame.');
+      }
       if (j === 'butt') {
         const label = { dowels: 'Drill the dowel holes with a doweling jig.', biscuits: 'Cut the biscuit slots.', pocket: 'Drill the pocket holes in the back of the joining pieces.', domino: 'Cut the loose-tenon mortises.' }[p.buttReinf];
         st.push(label);
       }
-      st.push(`Dry-fit, then glue up. Check that the diagonals match (${F.L(d.diag)} corner to corner on the outside).`);
+      st.push(d.door
+        ? `Dry-fit with the panel and space balls in place, then glue only the coped joints, keeping glue out of the panel groove. Check that the diagonals match (${F.L(d.diag)} corner to corner).`
+        : `Dry-fit, then glue up. Check that the diagonals match (${F.L(d.diag)} corner to corner on the outside).`);
       if (R > 0) st.push(`Rout the ${F.L(R)} × ${F.L(D)} rabbet around the back and square the corners with a chisel.`);
     }
-    st.push('Sand and finish.');
-    st.push(`Fit the glass, ${s.mat.on ? 'mat, ' : ''}artwork and backer, and hold them with points. Add D-rings and wire ${F.L(d.OH / 3)} down from the top.`);
+    st.push(d.door ? 'Sand and finish the frame.' : 'Sand and finish.');
+    st.push(d.door ? 'Fit hinges and a pull to suit the cabinet.'
+      : `Fit the glass, ${s.mat.on ? 'mat, ' : ''}artwork and backer, and hold them with points. Add D-rings and wire ${F.L(d.OH / 3)} down from the top.`);
     o.steps = st;
   }
 
@@ -1008,8 +1084,9 @@
     const F = makeFmt(s);
     const d = solve(s, F);
     const p = resolveParams(s, d);
-    const out = { state: s, dims: d, params: p, joint: JOINT_BY_ID[s.joint], fmt: F,
-      rows: [], cards: [], materials: [], steps: [], warnings: d.warnings.slice(), cuts: [], layout: null, lengthNote: '' };
+    const out = { state: s, dims: d, params: p, joint: JOINT_BY_ID[s.joint], fmt: F, door: d.door, panel: null,
+      rows: [], cards: [], materials: [], steps: [], warnings: d.warnings.slice(), cuts: [], layout: null, lengthNote: '',
+      stockNote: d.door ? 'The panel is not part of this layout: cut it from plywood, or glue it up from boards.' : '' };
     out.ok = !out.warnings.some(w => w.level === 'error');
     if (!out.ok) return out;
     J[s.joint](s, d, p, F, out);
@@ -1037,7 +1114,7 @@
 
   return {
     MM, DEG, JOINTS, JOINT_BY_ID, BISCUITS, DOMINOS,
-    defaultState, normalizeState, compute, solve, resolveParams,
+    defaultState, normalizeState, compute, solve, resolveParams, isDoor,
     lumberOptions, chooseBoards, planBuy, ripWidth,
     fmtLen, fmtAngle, parseLen, makeFmt, nice,
     fastenerPlan, bandFor, spread,

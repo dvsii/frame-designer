@@ -241,6 +241,47 @@
     ok(C.normalizeState({ v: 2, stock: { length: 96 } }).stock.source === 'strips', 'older stock settings default to strips');
   }
 
+  // Cope & stick panel door: 15 x 24 door, 2 1/4" stiles and rails, 3/8" cope, 1/4" groove
+  {
+    const door = (jp, over) => run(Object.assign({ joint: 'cope', solve: 'opening', outside: { w: 15, h: 24 },
+      stile: 2.25, top: 2.25, bottom: 2.25, jp: Object.assign({ copeUse: 'door' }, jp) }, over || {}));
+    R = door({});
+    ok(R.ok && R.door, 'door mode computes', JSON.stringify(R.warnings));
+    close(R.dims.SW, 10.5, 'door panel opening width');
+    close(R.dims.SH, 19.5, 'door panel opening height');
+    close(R.dims.R, 0, 'a door has no rabbet');
+    const panel = R.rows.find(r => r.key === 'panel');
+    close(panel.width, 10.5 + 2 * (0.375 - 0.0625), 'flat panel width');
+    close(panel.length, 19.5 + 2 * (0.375 - 0.0625), 'flat panel height');
+    close(panel.thick, 0.25, 'flat panel fills the groove');
+    close(row(R, 'rails').length, 15 - 4.5 + 0.75, 'door rails include the cope at both ends');
+    ok(!R.materials.some(m => /Glass|D-rings|points/.test(m.name)), 'no glass or hanging hardware on a door');
+    ok(R.cuts.length === 4, 'the panel stays out of the board layout');
+    ok(R.steps.some(t => /glue only the coped joints/i.test(t)), 'steps keep glue out of the panel groove');
+
+    R = door({ panelType: 'raised' }, { outside: { w: 24.5, h: 24 } });
+    close(R.panel.gapW, 0.125, 'raised panel side gap grows with width (20" opening)');
+    close(R.panel.gapH, 0.0625, 'raised panel end gap stays small');
+    close(R.rows.find(r => r.key === 'panel').width, 20 + 2 * (0.375 - 0.125), 'raised panel width');
+    close(R.panel.t, 0.625, 'raised panel default thickness');
+
+    for (const through of ['stiles', 'rails']) for (const pt of ['flat', 'raised']) {
+      const RR = door({ panelType: pt }, { through });
+      const P = G.buildModel(RR, {}).solids.find(S => S.piece === 'panel');
+      ok(!!P, `door ${through}/${pt} has a panel`);
+      if (!P) continue;
+      const bb = G.bbox(P);
+      close(bb[0], RR.panel.x0, `door ${through}/${pt} panel edge where it was sized`);
+      ok(bb[0] < RR.dims.ws && bb[0] > RR.dims.ws - RR.params.copeD, `door ${through}/${pt} panel edge sits in the groove`);
+      if (pt === 'raised') close(bb[5] - bb[2], RR.panel.t, `door ${through} raised field at full thickness`);
+      ok(G.buildModel(RR, { corner: true, explode: 0.6 }).solids.length > 0, `door ${through}/${pt} corner model`);
+    }
+    R = run({ joint: 'cope', jp: { copeUse: 'frame' } });
+    ok(!R.door && R.dims.R > 0, 'cope & stick picture frame keeps its rabbet');
+    R = door({}, { qty: 3 });
+    ok(R.rows.find(r => r.key === 'panel').qtyTotal === 3 && R.rows.find(r => r.key === 'stiles').qtyTotal === 6, 'three doors: three panels, six stiles');
+  }
+
   // Render each joint's corner so the shapes can be checked by eye.
   const views = document.getElementById('views');
   const t0 = performance.now();
@@ -260,6 +301,21 @@
         const cam = RN.fit(prep, yaw, pitch, 260, 190, 10);
         new RN.Renderer(cv).render(prep, cam, { width: 260, height: 190, res: 2 });
       }
+    }
+  }
+  // Panel doors, flat and raised
+  for (const pt of ['flat', 'raised']) {
+    R = run({ joint: 'cope', solve: 'opening', outside: { w: 15, h: 24 }, stile: 2.25, top: 2.25, bottom: 2.25, jp: { copeUse: 'door', panelType: pt } });
+    for (const [label, ex, yaw, pitch] of [['assembled', 0, 0.55, 0.42], ['exploded', 0.7, 0.55, 0.42]]) {
+      const fig = document.createElement('figure');
+      const cv = document.createElement('canvas');
+      fig.appendChild(cv);
+      const cap = document.createElement('figcaption');
+      cap.textContent = `door / ${pt} / ${label}`;
+      fig.appendChild(cap);
+      views.appendChild(fig);
+      const prep = RN.prepare(G.buildModel(R, { corner: true, explode: ex }).solids);
+      new RN.Renderer(cv).render(prep, RN.fit(prep, yaw, pitch, 260, 190, 10), { width: 260, height: 190, res: 2 });
     }
   }
   // Whole frame, front view

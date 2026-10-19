@@ -166,10 +166,17 @@ section { scroll-margin-top: 56px; }
 
 /* Inspector */
 .inspector { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 4px 14px 14px; min-width: 0; }
-.inspector fieldset { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 12px 0 4px; display: grid; gap: 10px; min-width: 0; }
-.inspector fieldset:first-child { border-top: 0; }
-.inspector legend { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; padding: 0; float: left; width: 100%; margin-bottom: 2px; }
-.inspector legend + * { clear: left; }
+.stock-form { padding: 4px 14px 14px; }
+.stepper { display: grid; grid-template-columns: 40px minmax(0, 120px) 40px; gap: 6px; align-items: center; }
+.stepper .step { height: 36px; padding: 0; font-size: 18px; line-height: 1; }
+.stepper .inp input { padding: 0 8px; text-align: center; }
+.stock-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (min-width: 1040px) { .stock-grid { grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.6fr); } }
+.stock-out { min-width: 0; }
+.inputs fieldset { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 12px 0 4px; display: grid; gap: 10px; min-width: 0; }
+.inputs fieldset:first-child { border-top: 0; }
+.inputs legend { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; padding: 0; float: left; width: 100%; margin-bottom: 2px; }
+.inputs legend + * { clear: left; }
 .field { display: grid; gap: 4px; min-width: 0; }
 .lbl { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: baseline; }
 .lbl .tag { margin-left: auto; font-size: 11px; font-family: var(--font-display); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
@@ -186,6 +193,8 @@ section { scroll-margin-top: 56px; }
 .field .reset { border: 0; background: none; padding: 0; color: var(--ink); text-decoration: underline; cursor: pointer; font-size: 12px; margin-left: auto; }
 .pair, #joint-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
 .span2 { grid-column: 1 / -1; }
+#joint-top { display: grid; gap: 10px; }
+#joint-top:empty { display: none; }
 .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end; }
 .check { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
 .check input { width: 18px; height: 18px; accent-color: var(--ink); margin: 0; }
@@ -312,7 +321,7 @@ footer p { margin: 0; max-width: 80ch; }
 
 @media print {
   body { background: #fff; color: #000; }
-  .actions, .bar, .joints, .inspector, .corner-controls, .legend, .res-head .btn, .editor, .toast, .designs, .panel-head .hint { display: none !important; }
+  .actions, .bar, .joints, .inspector, .stock-form, .corner-controls, .legend, .res-head .btn, .editor, .toast, .designs, .panel-head .hint { display: none !important; }
   .work { grid-template-columns: 1fr 1fr !important; }
   .panel, .table-wrap, .sum, .mats-wrap { border-color: #999; }
   section { break-inside: avoid-page; }
@@ -331,7 +340,7 @@ footer p { margin: 0; max-width: 80ch; }
       </svg>
       <div>
         <h1>Frame Designer</h1>
-        <p>Picture frame cut lists for nine ways to join a corner</p>
+        <p>Cut lists for picture frames and panel doors, with nine ways to join a corner</p>
       </div>
     </div>
     <div class="actions">
@@ -411,9 +420,17 @@ footer p { margin: 0; max-width: 80ch; }
         </figure>
       </div>
 
-      <form class="inspector" id="inspector" autocomplete="off" novalidate>
+      <form class="inspector inputs" id="inspector" autocomplete="off" novalidate>
         <fieldset>
-          <legend>Size</legend>
+          <legend id="lg-size">Frame</legend>
+          <div class="field">
+            <span class="lbl" id="lbl-qty">Frames to make</span>
+            <div class="stepper" role="group" aria-labelledby="lbl-qty">
+              <button type="button" class="btn step" data-step="-1" aria-label="One fewer">−</button>
+              <span class="inp"><input id="f-qty" data-path="qty" data-kind="int" inputmode="numeric" spellcheck="false" aria-labelledby="lbl-qty"></span>
+              <button type="button" class="btn step" data-step="1" aria-label="One more">+</button>
+            </div>
+          </div>
           <div class="field">
             <span class="lbl" id="lbl-solve">Calculate</span>
             <div class="seg seg-wide" data-seg="solve" role="group" aria-labelledby="lbl-solve">
@@ -422,7 +439,7 @@ footer p { margin: 0; max-width: 80ch; }
               <button type="button" data-val="widths">Widths</button>
             </div>
           </div>
-          <div class="field">
+          <div class="field" id="ref-field">
             <span class="lbl" id="lbl-ref">Measure the inside by</span>
             <div class="seg seg-wide" data-seg="innerRef" role="group" aria-labelledby="lbl-ref">
               <button type="button" data-val="art">Artwork or glass</button>
@@ -451,27 +468,24 @@ footer p { margin: 0; max-width: 80ch; }
           </div>
           <label class="check"><input type="checkbox" id="f-link" data-path="linkWidths" data-kind="bool"> Same width all round</label>
           <p class="help">Stiles are the sides; rails are the top and bottom. Type fractions as 11 3/4 or 11-3/4, or metric like 298 mm.</p>
-        </fieldset>
-
-        <fieldset>
-          <legend>Stock and rabbet</legend>
           <div class="pair">
-            <label class="field"><span class="lbl">Stock thickness</span>
+            <label class="field"><span class="lbl">Thickness</span>
               <span class="inp"><input id="f-thick" data-path="thickness" spellcheck="false"><span class="u"></span></span></label>
-            <label class="field"><span class="lbl">Fit allowance</span>
+            <label class="field" id="clear-field"><span class="lbl">Fit allowance</span>
               <span class="inp"><input id="f-clear" data-path="clearance" spellcheck="false"><span class="u"></span></span></label>
           </div>
-          <div class="pair">
+          <div class="pair" id="rabbet-fields">
             <label class="field"><span class="lbl">Rabbet width (lip)</span>
               <span class="inp"><input id="f-rabw" data-path="rabbetW" spellcheck="false"><span class="u"></span></span></label>
             <label class="field"><span class="lbl">Rabbet depth</span>
               <span class="inp"><input id="f-rabd" data-path="rabbetD" spellcheck="false"><span class="u"></span></span></label>
           </div>
-          <p class="help">The rabbet is the step behind the frame that holds the glass, art and backer. The fit allowance is the total play around the glass.</p>
+          <p class="help" id="rabbet-help">The rabbet is the step behind the frame that holds the glass, art and backer. The fit allowance is the total play around the glass.</p>
         </fieldset>
 
         <fieldset>
           <legend id="lg-joint">Joint</legend>
+          <div id="joint-top" class="field-list"></div>
           <div class="field" id="through-field">
             <span class="lbl" id="lbl-through">Runs through to the corner</span>
             <div class="seg seg-wide" data-seg="through" role="group" aria-labelledby="lbl-through">
@@ -482,7 +496,7 @@ footer p { margin: 0; max-width: 80ch; }
           <div id="joint-fields" class="field-list"></div>
         </fieldset>
 
-        <fieldset>
+        <fieldset id="mat-fs">
           <legend>Mat</legend>
           <label class="check"><input type="checkbox" id="f-mat" data-path="mat.on" data-kind="bool"> Add a mat around the artwork</label>
           <div id="mat-fields" class="field-list" style="display:grid;gap:10px">
@@ -500,51 +514,8 @@ footer p { margin: 0; max-width: 80ch; }
         </fieldset>
 
         <fieldset>
-          <legend>Stock and cutting</legend>
-          <div class="field">
-            <span class="lbl" id="lbl-source">Cut the pieces from</span>
-            <div class="seg seg-wide" data-seg="source" role="group" aria-labelledby="lbl-source">
-              <button type="button" data-val="strips">Strips at width</button>
-              <button type="button" data-val="boards">Boards</button>
-              <button type="button" data-val="molding">Molding</button>
-            </div>
-          </div>
-          <p class="help" id="source-help"></p>
-          <div id="molding-fields" class="field-list" style="display:grid;gap:10px">
-            <div class="pair">
-              <label class="field"><span class="lbl">Molding width</span>
-                <span class="inp"><input id="f-mold-w" data-path="stile" spellcheck="false"><span class="u"></span></span></label>
-              <label class="field"><span class="lbl">Thickness</span>
-                <span class="inp"><input id="f-mold-t" data-path="thickness" spellcheck="false"><span class="u"></span></span></label>
-            </div>
-            <div class="pair">
-              <label class="field"><span class="lbl">Rabbet width</span>
-                <span class="inp"><input id="f-mold-rw" data-path="rabbetW" spellcheck="false"><span class="u"></span></span></label>
-              <label class="field"><span class="lbl">Rabbet depth</span>
-                <span class="inp"><input id="f-mold-rd" data-path="rabbetD" spellcheck="false"><span class="u"></span></span></label>
-            </div>
-          </div>
-          <div id="boards-fields" class="field-list" style="display:grid;gap:8px">
-            <div class="boards-head"><span>Width</span><span>Thick</span><span>Length</span><span>Qty</span><span></span></div>
-            <div id="board-rows" class="board-rows"></div>
-            <button type="button" class="btn add-board" id="add-board">Add a board</button>
-            <label class="check"><input type="checkbox" id="f-buy" data-path="stock.buy" data-kind="bool"> Buy standard boards for whatever doesn't fit</label>
-          </div>
-          <div class="pair">
-            <label class="field"><span class="lbl" id="lbl-board">Board length</span>
-              <span class="inp"><input id="f-board" data-path="stock.length" spellcheck="false"><span class="u"></span></span></label>
-            <label class="field"><span class="lbl">Saw kerf</span>
-              <span class="inp"><input id="f-kerf" data-path="stock.kerf" spellcheck="false"><span class="u"></span></span></label>
-          </div>
-          <div class="pair">
-            <label class="field"><span class="lbl" id="lbl-trim">End trim per board</span>
-              <span class="inp"><input id="f-trim" data-path="stock.trim" spellcheck="false"><span class="u"></span></span></label>
-            <label class="field"><span class="lbl">Frames to make</span>
-              <span class="inp"><input id="f-qty" data-path="qty" data-kind="int" inputmode="numeric" spellcheck="false"></span></label>
-          </div>
-          <label class="check"><input type="checkbox" id="f-grain" data-path="stock.grain" data-kind="bool"> Cut each frame in order so the grain wraps the corners</label>
-          <label class="check" id="suggest-check"><input type="checkbox" id="f-suggest" data-path="stock.suggest" data-kind="bool"> Suggest the boards to buy that waste the least</label>
-          <label class="field"><span class="lbl">Round to</span>
+          <legend>Display</legend>
+          <label class="field"><span class="lbl">Round sizes to</span>
             <span class="inp"><select id="f-prec"></select></span></label>
         </fieldset>
       </form>
@@ -573,14 +544,59 @@ footer p { margin: 0; max-width: 80ch; }
     </div>
   </section>
 
-  <section id="stock" aria-label="Stock layout">
+  <section id="stock" aria-label="Stock">
     <div class="res-head">
-      <h2>Stock layout</h2>
+      <h2>Stock</h2>
       <span class="sub" id="stock-sub"></span>
     </div>
-    <p class="stock-sum" id="stock-sum"></p>
-    <div class="suggest" id="suggest" hidden></div>
-    <div class="layout" id="layout"></div>
+    <div class="stock-grid">
+      <form class="panel inputs stock-form" id="stock-form" autocomplete="off" novalidate>
+        <fieldset>
+          <legend id="lbl-source">Cut the pieces from</legend>
+          <div class="seg seg-wide" data-seg="source" role="group" aria-labelledby="lbl-source">
+            <button type="button" data-val="strips">Strips at width</button>
+            <button type="button" data-val="boards">Boards</button>
+            <button type="button" data-val="molding">Molding</button>
+          </div>
+          <p class="help" id="source-help"></p>
+          <div id="molding-fields" class="field-list" style="display:grid;gap:10px">
+            <div class="pair">
+              <label class="field"><span class="lbl">Molding width</span>
+                <span class="inp"><input id="f-mold-w" data-path="stile" spellcheck="false"><span class="u"></span></span></label>
+              <label class="field"><span class="lbl">Thickness</span>
+                <span class="inp"><input id="f-mold-t" data-path="thickness" spellcheck="false"><span class="u"></span></span></label>
+            </div>
+            <div class="pair">
+              <label class="field"><span class="lbl">Rabbet width</span>
+                <span class="inp"><input id="f-mold-rw" data-path="rabbetW" spellcheck="false"><span class="u"></span></span></label>
+              <label class="field"><span class="lbl">Rabbet depth</span>
+                <span class="inp"><input id="f-mold-rd" data-path="rabbetD" spellcheck="false"><span class="u"></span></span></label>
+            </div>
+          </div>
+          <div id="boards-fields" class="field-list" style="display:grid;gap:8px">
+            <div class="boards-head"><span>Width</span><span>Thick</span><span>Length</span><span>Qty</span><span></span></div>
+            <div id="board-rows" class="board-rows"></div>
+            <button type="button" class="btn add-board" id="add-board">Add a board</button>
+            <label class="check"><input type="checkbox" id="f-buy" data-path="stock.buy" data-kind="bool"> Buy standard boards for whatever doesn't fit</label>
+          </div>
+          <label class="field"><span class="lbl" id="lbl-board">Board length</span>
+            <span class="inp"><input id="f-board" data-path="stock.length" spellcheck="false"><span class="u"></span></span></label>
+          <div class="pair">
+            <label class="field"><span class="lbl">Saw kerf</span>
+              <span class="inp"><input id="f-kerf" data-path="stock.kerf" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field"><span class="lbl" id="lbl-trim">End trim per board</span>
+              <span class="inp"><input id="f-trim" data-path="stock.trim" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <label class="check"><input type="checkbox" id="f-grain" data-path="stock.grain" data-kind="bool"> Cut each frame in order so the grain wraps the corners</label>
+          <label class="check" id="suggest-check"><input type="checkbox" id="f-suggest" data-path="stock.suggest" data-kind="bool"> Suggest the boards to buy that waste the least</label>
+        </fieldset>
+      </form>
+      <div class="stock-out">
+        <p class="stock-sum" id="stock-sum"></p>
+        <div class="suggest" id="suggest" hidden></div>
+        <div class="layout" id="layout"></div>
+      </div>
+    </div>
   </section>
 
   <section id="steps" aria-label="Build steps">
