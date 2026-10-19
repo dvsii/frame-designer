@@ -1,9 +1,10 @@
-/* Framewright app: connects the frame math, the 3D model and the page. */
+/* Frame Designer app: connects the frame math, the 3D model and the page. */
 (function () {
   'use strict';
   const C = window.FWCore, G = window.FWGeom, RN = window.FWRender;
   const $ = (s, el) => (el || document).querySelector(s);
   const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
+  // Storage keys keep the app's old name so designs saved before the rename still load.
   const KEY_CUR = 'framewright.current', KEY_SAVED = 'framewright.designs';
   const store = {
     get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
@@ -125,7 +126,7 @@
   function drawThumbs() {
     for (const b of $$('#joints .jcard')) {
       const id = b.dataset.joint;
-      const jp = id === 'miter' ? { miterReinf: 'keys' } : id === 'butt' ? { buttReinf: 'dowels' } : {};
+      const jp = id === 'butt' ? { buttReinf: 'dowels' } : {};
       const RR = C.compute(Object.assign(C.defaultState(), { joint: id, jp }));
       if (!RR.ok) continue;
       const prep = RN.prepare(G.buildModel(RR, { corner: true, explode: 0.45 }).solids);
@@ -141,10 +142,12 @@
   };
   const JF = {
     miter: [
-      { k: 'miterReinf', type: 'select', label: 'Reinforcement', opts: [['keys', 'Corner keys (splines)'], ['vnails', 'V-nails'], ['biscuits', 'Biscuits'], ['none', 'Glue only']] },
-      { k: 'keys', type: 'select', label: 'Keys per corner', opts: [[1, '1'], [2, '2'], [3, '3']], when: p => p.miterReinf === 'keys' },
-      { k: 'keyLeg', type: 'len', label: 'Key size along the edge', when: p => p.miterReinf === 'keys' },
-      { k: 'keyThick', type: 'len', label: 'Key thickness', when: p => p.miterReinf === 'keys' },
+      { k: 'miterReinf', type: 'select', label: 'Reinforcement', opts: [['none', 'Glue only'], ['vnails', 'V-nails'], ['biscuits', 'Biscuits']] },
+    ],
+    miterspline: [
+      { k: 'keys', type: 'select', label: 'Splines per corner', opts: [[1, '1'], [2, '2'], [3, '3']] },
+      { k: 'keyLeg', type: 'len', label: 'Spline size along the edge' },
+      { k: 'keyThick', type: 'len', label: 'Spline thickness' },
     ],
     halflap: [{ k: 'lapDepth', type: 'len', label: 'Lap depth, through pieces' }],
     mitredlap: [{ k: 'lapDepth', type: 'len', label: 'Back lap thickness' }],
@@ -609,7 +612,7 @@
     const s = state;
     $('#stock-sub').textContent = `${plural(lay.totalBoards, 'board')} of ${L(lay.boardLength)}`;
     let sum = `${plural(lay.totalBoards, 'board')}, ${Math.round(lay.waste * 100)}% left over as offcuts and kerf.`;
-    if (s.joint === 'miter') sum += ` Buying molding? The usual rule of thumb is the perimeter plus 8 × the width: ${s.units === 'mm' ? L(lay.moldingRule) : `${(lay.moldingRule / 12).toFixed(1)} ft`}.`;
+    if (s.joint === 'miter' || s.joint === 'miterspline') sum += ` Buying molding? The usual rule of thumb is the perimeter plus 8 × the width: ${s.units === 'mm' ? L(lay.moldingRule) : `${(lay.moldingRule / 12).toFixed(1)} ft`}.`;
     $('#stock-sum').innerHTML = fr(sum);
     box.innerHTML = lay.groups.map((g, gi) => {
       const h = g.boards.length * (rowH + gap) + 2;
@@ -648,7 +651,7 @@
 
   function cutListText() {
     const s = state, d = R.dims;
-    const out = [`Framewright: ${R.joint.name} frame${s.qty > 1 ? ` (${s.qty} frames)` : ''}`,
+    const out = [`Frame Designer: ${R.joint.name} frame${s.qty > 1 ? ` (${s.qty} frames)` : ''}`,
       `Outside ${L(d.OW)} x ${L(d.OH)}   Opening ${L(d.SW)} x ${L(d.SH)}   Glass ${L(d.GW)} x ${L(d.GH)}`,
       `Stock ${L(d.T)} thick, rabbet ${L(d.R)} x ${L(d.D)}`, ''];
     const rows = [['Part', 'Qty', 'Length', 'Width', 'Ends', 'Joinery']]

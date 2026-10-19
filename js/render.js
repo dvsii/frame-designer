@@ -1,4 +1,4 @@
-/* Framewright renderer: a small z-buffer rasterizer for convex solids, drawn into a 2D canvas
+/* Frame Designer renderer: a small z-buffer rasterizer for convex solids, drawn into a 2D canvas
    with flat shading, procedural wood grain and outlines wherever two pieces or two faces meet. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();

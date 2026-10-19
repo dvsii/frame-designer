@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Framewright tests</title>
+<title>Frame Designer tests</title>
 <style>
   body { font: 13px/1.4 ui-monospace, Menlo, monospace; margin: 16px; background: #f4f5f1; color: #1d2320; }
   .fail { color: #b42318; font-weight: bold; }
@@ -12,7 +12,7 @@
 </style>
 </head>
 <body>
-<h1>Framewright tests</h1>
+<h1>Frame Designer tests</h1>
 <pre id="out"></pre>
 <div class="grid" id="views"></div>
 <script src="../js/core.js"></script>
@@ -159,7 +159,7 @@
   }
   // Reinforcements build
   for (const r of ['keys', 'vnails', 'biscuits']) {
-    const M = G.buildModel(run({ jp: { miterReinf: r } }), { corner: true, explode: 0.5 });
+    const M = G.buildModel(run(r === 'keys' ? { joint: 'miterspline' } : { jp: { miterReinf: r } }), { corner: true, explode: 0.5 });
     ok(M.solids.some(S => S.mat !== 'rail' && S.mat !== 'stile'), `miter ${r} adds hardware`);
   }
   for (const r of ['dowels', 'biscuits', 'pocket', 'domino']) {
@@ -168,10 +168,24 @@
   }
   // Keys: total volume of wood + keys still equals the frame
   {
-    R = run({ jp: { miterReinf: 'keys' } });
+    R = run({ joint: 'miterspline' });
     const M = G.buildModel(R, {});
     const all = M.solids.reduce((a, S) => a + G.volume(S), 0);
     close(all, frameVol(R.dims), 'keys fill their slots exactly', 1e-6);
+  }
+
+  // Plain miter vs miter with splines, and saved designs from before the split
+  {
+    const plain = run({ joint: 'miter' }), spl = run({ joint: 'miterspline' });
+    ok(plain.params.miterReinf === 'none', 'plain miter defaults to glue only', plain.params.miterReinf);
+    ok(!plain.cards.some(c => c.title === 'Splines') && !G.buildModel(plain, {}).solids.some(S => S.mat !== 'rail' && S.mat !== 'stile'), 'plain miter has no splines');
+    ok(spl.params.miterReinf === 'keys' && spl.cards.some(c => c.title === 'Splines'), 'miter w/ spline has splines');
+    ok(run({ joint: 'miterspline', jp: { miterReinf: 'none' } }).params.miterReinf === 'keys', 'splines cannot be turned off');
+    ok(run({ joint: 'miter', jp: { miterReinf: 'vnails' } }).params.miterReinf === 'vnails', 'plain miter keeps V-nails');
+    const old = Object.assign(C.defaultState(), { v: 1, joint: 'miter', jp: {} });
+    ok(C.normalizeState(old).joint === 'miterspline', 'v1 default miter becomes miter w/ spline');
+    ok(C.normalizeState(Object.assign(old, { jp: { miterReinf: 'biscuits' } })).joint === 'miter', 'v1 biscuit miter stays a miter');
+    ok(C.normalizeState(C.defaultState()).joint === 'miter', 'default joint is the plain miter');
   }
 
   // Render each joint's corner so the shapes can be checked by eye.
@@ -179,7 +193,7 @@
   const t0 = performance.now();
   for (const j of C.JOINTS) {
     for (const through of j.through ? ['stiles', 'rails'] : ['stiles']) {
-      const reinf = j.id === 'butt' ? 'dowels' : 'keys';
+      const reinf = j.id === 'butt' ? 'dowels' : 'vnails';
       R = run({ joint: j.id, through, jp: { miterReinf: reinf, buttReinf: reinf } });
       for (const [label, ex, yaw, pitch] of [['assembled', 0, 0.55, 0.42], ['exploded', 0.7, 0.55, 0.42], ['back', 0.7, Math.PI - 0.55, 0.42]]) {
         const fig = document.createElement('figure');

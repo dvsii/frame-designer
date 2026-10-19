@@ -1,4 +1,4 @@
-"""Draw the Framewright app icons (a mitered corner in tape-measure yellow) as PNGs.
+"""Draw the Frame Designer app icons (a mitered corner in tape-measure yellow) as PNGs.
 
 Pure standard library, so it runs anywhere Python 3 does:
     python3 scripts/make_icons.py

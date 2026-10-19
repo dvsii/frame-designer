@@ -1,7 +1,7 @@
-"""Bundle Framewright into one self-contained HTML file.
+"""Bundle Frame Designer into one self-contained HTML file.
 
-    python3 scripts/build_single.py            # dist/framewright.html, a full standalone page
-    python3 scripts/build_single.py --fragment # dist/framewright-fragment.html, body-only for hosts
+    python3 scripts/build_single.py            # dist/frame-designer.html, a full standalone page
+    python3 scripts/build_single.py --fragment # dist/frame-designer-fragment.html, body-only for hosts
                                                # that wrap the page in their own <html>/<head>
 
 The scripts are inlined and the PWA links (manifest, icons, service worker) are dropped,
@@ -39,9 +39,9 @@ def main():
         style = re.search(r'<style>.*?</style>', html, re.S).group(0)
         body = re.search(r'<body>(.*)</body>', html, re.S).group(1)
         html = f'{title}\n{fit}\n{links}{style}\n{body.strip()}\n'
-        out = 'dist/framewright-fragment.html'
+        out = 'dist/frame-designer-fragment.html'
     else:
-        out = 'dist/framewright.html'
+        out = 'dist/frame-designer.html'
 
     os.makedirs(os.path.join(ROOT, 'dist'), exist_ok=True)
     with open(os.path.join(ROOT, out), 'w', encoding='utf-8') as f:

@@ -1,7 +1,7 @@
 {
-  "name": "Framewright",
-  "short_name": "Framewright",
-  "description": "Picture frame cut lists, joinery details and stock layouts for eight corner joints.",
+  "name": "Frame Designer",
+  "short_name": "Frame Designer",
+  "description": "Picture frame cut lists, joinery details and stock layouts for nine corner joints.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,13 +1,13 @@
-# Framewright
+# Frame Designer
 
-**Use it here: https://dvsii.github.io/framewright/** (open it on your phone and add it to the home screen to install it; see [Install on a phone](#install-on-a-phone)).
+**Use it here: https://dvsii.github.io/frame-designer/** (open it on your phone and add it to the home screen to install it; see [Install on a phone](#install-on-a-phone)).
 
 A lightweight web app for making picture frames. Enter the sizes you know on a drawing of the frame (artwork, outside size, rail and stile widths, in any combination) and it works out the rest, then gives you:
 
 - a to-scale front view with editable dimensions and the hidden joinery dashed in,
 - a 3D model of the corner joint you can turn and pull apart,
 - the cut list (long and short points, shoulder lengths, saw angles),
-- joinery details for the joint you picked (tenon and mortise sizes, lap depths, key slot heights, dowel positions…),
+- joinery details for the joint you picked (tenon and mortise sizes, lap depths, spline slot heights, dowel positions…),
 - glass, backer, mat and hardware sizes,
 - a stock layout showing how the pieces fit on your boards, kerf included, and what's left over,
 - build steps.
@@ -18,7 +18,8 @@ It runs entirely in the browser: plain HTML and JavaScript, no build step, no se
 
 | Joint | What runs full length | Rail length (stiles through) |
 |---|---|---|
-| Miter | everything, measured on the long point | outside width |
+| Miter (glue, V-nails or biscuits) | everything, measured on the long point | outside width |
+| Miter w/ spline (triangular splines across each corner) | everything, measured on the long point | outside width |
 | Half-lap | everything | outside width |
 | Mitered half-lap | everything | outside width |
 | Bridle (open mortise) | everything | outside width |
@@ -51,7 +52,7 @@ python3 -m http.server 8000
 
 Then open http://localhost:8000. Opening `index.html` straight from disk also works, apart from offline install.
 
-`dist/framewright.html` is the whole app in a single file (build it with `python3 scripts/build_single.py`), handy for e-mailing or keeping on a USB stick in the shop.
+`dist/frame-designer.html` is the whole app in a single file (build it with `python3 scripts/build_single.py`), handy for e-mailing or keeping on a USB stick in the shop.
 
 ## Deploy as a web app
 
@@ -60,9 +61,9 @@ Upload the folder (or just `index.html`, `manifest.webmanifest`, `sw.js`, `js/` 
 GitHub Pages, for example:
 
 ```bash
-git init && git add . && git commit -m "Framewright"
-gh repo create framewright --public --source . --push
-gh api repos/{owner}/framewright/pages -X POST -f "source[branch]=main" -f "source[path]=/"
+git init && git add . && git commit -m "Frame Designer"
+gh repo create frame-designer --public --source . --push
+gh api repos/{owner}/frame-designer/pages -X POST -f "source[branch]=main" -f "source[path]=/"
 ```
 
 ## Install on a phone

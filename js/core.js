@@ -1,4 +1,4 @@
-/* Framewright core: frame sizing, joinery, cut list and stock layout.
+/* Frame Designer core: frame sizing, joinery, cut list and stock layout.
    Pure functions with no DOM access. Every length is in inches internally;
    formatting converts to the user's units at the edges. */
 (function (root, factory) {
@@ -12,7 +12,9 @@
 
   const JOINTS = [
     { id: 'miter', name: 'Miter', through: false,
-      blurb: 'Angled corners with the grain running unbroken around the frame. The joint is end grain, so reinforce it with keys, V-nails or biscuits.' },
+      blurb: 'Angled corners with the grain running unbroken around the frame. The joint is end grain, so glue alone suits small frames; add V-nails or biscuits on bigger ones.' },
+    { id: 'miterspline', name: 'Miter w/ spline', through: false,
+      blurb: 'A miter with triangular splines glued into slots sawn across each corner after glue-up. Much stronger than a plain miter, and contrasting splines are decorative.' },
     { id: 'halflap', name: 'Half-lap', through: true,
       blurb: 'Both pieces are cut to half thickness where they overlap. A big glue area makes it very strong; end grain shows on the outside edges.' },
     { id: 'mitredlap', name: 'Mitered half-lap', through: false,
@@ -48,7 +50,7 @@
 
   function defaultState() {
     return {
-      v: 1,
+      v: 2,
       units: 'in', precIn: 16, precMm: 0.5,
       joint: 'miter',
       solve: 'outside',          // which quantity is calculated: outside | opening | widths
@@ -78,6 +80,12 @@
     s.mat = Object.assign(def.mat, s.mat);
     s.stock = Object.assign(def.stock, s.stock);
     s.jp = Object.assign({}, s.jp);
+    // Before v2 the splined miter was the 'miter' joint with keys as its default reinforcement.
+    if (s.joint === 'miter' && (s.jp.miterReinf === 'keys' || (input && input.v === 1 && s.jp.miterReinf == null))) {
+      s.joint = 'miterspline';
+      delete s.jp.miterReinf;
+    }
+    s.v = 2;
     if (!JOINT_BY_ID[s.joint]) s.joint = 'miter';
     if (!['outside', 'opening', 'widths'].includes(s.solve)) s.solve = 'outside';
     if (!['art', 'sight'].includes(s.innerRef)) s.innerRef = 'art';
@@ -264,7 +272,7 @@
     const wJoin = thr ? d.ws : Math.min(d.wT, d.wB);              // member that joins into it
     const p = { auto, thr };
 
-    p.miterReinf = pickEnum('miterReinf', 'keys', ['keys', 'vnails', 'biscuits', 'none']);
+    p.miterReinf = s.joint === 'miterspline' ? 'keys' : pickEnum('miterReinf', 'none', ['vnails', 'biscuits', 'none']);
     p.keys = pickEnum('keys', T >= 1 ? 2 : 1, [1, 2, 3]);
     p.keyThick = pos('keyThick', u === 'mm' ? 3 / MM : 0.125);
     const keyRoom = d.ws + Math.min(d.wT, d.wB) - 2 * d.R;
@@ -403,18 +411,18 @@
         const inBack = R > 0 && (T - zf) - kt / 2 < D;
         worst = Math.min(worst, (inBack ? ws + wr - 2 * R : ws + wr) - 0.125);
       }
-      if (Lk > worst) o.warnings.push({ level: 'warn', text: `Keys showing ${F.L(Lk)} along each edge would cut into the ${worst < ws + Math.min(wT, wB) - 0.2 ? 'rabbet' : 'opening'}. Use ${F.L(niceDown(Math.max(0, worst), s.units))} or smaller.` });
-      if (kt >= T / 2) o.warnings.push({ level: 'warn', text: 'Key slots that thick leave little wood on either side. Keep keys under a third of the stock thickness.' });
-      o.cards.push({ title: 'Corner keys', lines: [
-        `${plural(n, 'key')} per corner, ${F.L(kt)} thick, showing ${F.L(Lk)} along each outside edge.`,
+      if (Lk > worst) o.warnings.push({ level: 'warn', text: `Splines showing ${F.L(Lk)} along each edge would cut into the ${worst < ws + Math.min(wT, wB) - 0.2 ? 'rabbet' : 'opening'}. Use ${F.L(niceDown(Math.max(0, worst), s.units))} or smaller.` });
+      if (kt >= T / 2) o.warnings.push({ level: 'warn', text: 'Spline slots that thick leave little wood on either side. Keep splines under a third of the stock thickness.' });
+      o.cards.push({ title: 'Splines', lines: [
+        `${plural(n, 'spline')} per corner, ${F.L(kt)} thick, showing ${F.L(Lk)} along each outside edge.`,
         `Cut the slots after glue-up on a 45° cradle sled, with the blade ${F.L(h)} above the bottom of the cradle.`,
         `Center the slot${n > 1 ? 's' : ''} ${zs.map(F.L).join(', ')} from the front face.`,
-        'Orient the key grain along its long edge, across the joint line. Glue in, then trim flush.',
+        'Orient the spline grain along its long edge, across the joint line. Glue in, then trim flush.',
       ] });
       const count = 4 * n * q;
       const leg = Lk + 0.25, stripW = leg / Math.SQRT2;
       const stripLen = (count + 1) * stripW + count * s.stock.kerf * 1.5;
-      o.materials.push({ name: 'Key stock', qty: count, size: `${F.L(kt)} × ${F.L(stripW)} × ${F.L(stripLen)} strip`, note: 'contrasting wood, grain lengthwise; cut triangles alternately' });
+      o.materials.push({ name: 'Spline stock', qty: count, size: `${F.L(kt)} × ${F.L(stripW)} × ${F.L(stripLen)} strip`, note: 'contrasting wood, grain lengthwise; cut triangles alternately' });
     } else if (p.miterReinf === 'vnails') {
       let size = VNAILS_MM[0];
       for (const v of VNAILS_MM) if (v <= 0.65 * T * MM) size = v;
@@ -429,8 +437,8 @@
       const lip = T - D;
       const avail = Math.hypot(ws, Math.min(wT, wB));
       const b = BISCUITS.find(x => x.len + 0.25 <= avail);
-      if (lip < 0.3) o.warnings.push({ level: 'warn', text: `The lip in front of the rabbet is ${F.L(lip)} thick, too thin for a biscuit slot. Use corner keys or V-nails instead.` });
-      if (!b) o.warnings.push({ level: 'warn', text: 'The miter face is too short for even an FF biscuit. Use corner keys or V-nails instead.' });
+      if (lip < 0.3) o.warnings.push({ level: 'warn', text: `The lip in front of the rabbet is ${F.L(lip)} thick, too thin for a biscuit slot. Use V-nails, or a miter with splines.` });
+      if (!b) o.warnings.push({ level: 'warn', text: 'The miter face is too short for even an FF biscuit. Use V-nails, or a miter with splines.' });
       else {
         o.cards.push({ title: 'Biscuits', lines: [
           `One ${b.name} biscuit per corner, centered on the miter face.`,
@@ -444,9 +452,11 @@
         'Glue holds end grain poorly. Size the miters with thin glue first, let it tack, then glue up in a band clamp.',
         'Fine for small frames with a firm backer; reinforce anything larger.',
       ] });
-      if (OW + OH > 32) o.warnings.push({ level: 'warn', text: 'A glue-only miter is weak at this size. Add corner keys, V-nails or biscuits.' });
+      if (OW + OH > 32) o.warnings.push({ level: 'warn', text: 'A glue-only miter is weak at this size. Add V-nails or biscuits, or use a miter with splines.' });
     }
   };
+
+  J.miterspline = J.miter;
 
   J.halflap = (s, d, p, F, o) => {
     const { ws, wT, wB, OW, OH, T } = d;
@@ -695,11 +705,11 @@
     const allSame = Math.abs(wT - ws) < 1e-6 && Math.abs(wB - ws) < 1e-6;
     st.push(`Mill the stock flat and square to ${F.L(T)} thick, then rip it to width: ${allSame ? F.L(ws) : `stiles ${F.L(ws)}, top rail ${F.L(wT)}, bottom rail ${F.L(wB)}`}.`);
     const j = s.joint;
-    if (j === 'miter') {
+    if (j === 'miter' || j === 'miterspline') {
       if (R > 0) st.push(`Cut the ${F.L(R)} × ${F.L(D)} rabbet along one edge of each strip before cutting the pieces, in two passes on the table saw or with a rabbeting bit.`);
       st.push(s.stock.grain ? 'Cut the pieces in order around the frame (top, side, bottom, side) from one strip so the grain wraps the corners. Miter one end, mark the long point, then cut the other end.' : 'Miter one end of each piece, mark its long point, then cut the other end.');
       st.push('Dry-fit in a band clamp. Fix any gap by trimming on a shooting board or miter sled; make both pieces of each pair identical.');
-      if (p.miterReinf === 'keys') st.push(`Glue up in a band clamp. Once cured, cut the key slots on a 45° cradle sled (blade ${F.L(p.keyLeg / Math.SQRT2)} high), glue in the keys and trim them flush.`);
+      if (p.miterReinf === 'keys') st.push(`Glue up in a band clamp. Once cured, cut the spline slots on a 45° cradle sled (blade ${F.L(p.keyLeg / Math.SQRT2)} high), glue in the splines and trim them flush.`);
       else if (p.miterReinf === 'vnails') st.push('Glue up in a band clamp and drive the V-nails from the back while it is clamped.');
       else if (p.miterReinf === 'biscuits') st.push('Cut a biscuit slot in each miter face, then glue up with the biscuits in a band clamp.');
       else st.push('Size the end grain with thin glue, let it tack, then glue up in a band clamp.');

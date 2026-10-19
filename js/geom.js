@@ -1,4 +1,4 @@
-/* Framewright geometry: convex solids, plane clipping (enough CSG to cut joints)
+/* Frame Designer geometry: convex solids, plane clipping (enough CSG to cut joints)
    and the 3D model of a frame for each joint type.
    World axes: x to the right, y up, z toward the viewer. The frame's back is z = 0,
    its front z = T, and the outside corner at bottom left is the origin. */
@@ -283,6 +283,8 @@
       }
     }
   };
+
+  BUILD.miterspline = BUILD.miter;
 
   BUILD.halflap = (B, L, p) => {
     const { OW, OH, wl, wr, wt, wb, T } = L, dd = p.lapDepth;
