@@ -14,9 +14,7 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <!-- standalone:end -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
 :root {
   /* Layout: a shop drawing on the left (front elevation, corner model), the spec sheet on the right, the cut sheet below. */
@@ -72,6 +70,9 @@ h3 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: 
 .mk { color: var(--muted); font-size: 0.85em; margin-left: 1px; }
 
 .wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 56px; }
+/* The iPhone app draws under the status bar (browsers report no top inset): keep the page below it, with a strip of page colour behind the clock. */
+body { padding-top: env(safe-area-inset-top, 0px); }
+body::before { content: ""; position: fixed; z-index: 30; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background: var(--bg); }
 
 /* Header */
 .top { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; padding-block: 16px 12px; }
@@ -108,7 +109,7 @@ h3 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: 
 .bar a:hover { color: var(--ink); }
 
 /* Joint picker */
-section { scroll-margin-top: 56px; }
+section { scroll-margin-top: calc(56px + env(safe-area-inset-top, 0px)); }
 #design { padding-top: 16px; }
 .joints { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; scrollbar-width: thin; }
 .jcard { flex: 0 0 auto; width: 132px; scroll-snap-align: start; border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 4px 4px 7px; text-align: left; cursor: pointer; display: grid; gap: 2px; }
@@ -606,7 +607,7 @@ footer p { margin: 0; max-width: 80ch; }
 
   <footer>
     <p>All sizes are worked out from your inputs; check the first cut against a test piece before cutting good stock. A + or − after a fraction means the true size is a hair over or under it.</p>
-    <p>Frame Designer runs entirely in your browser. Nothing you enter leaves this device.</p>
+    <p id="footer-local">Frame Designer runs entirely in your browser. Nothing you enter leaves this device.</p>
   </footer>
 </div>
 

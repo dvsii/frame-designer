@@ -5,13 +5,20 @@
                                                # that wrap the page in their own <html>/<head>
 
 The scripts are inlined and the PWA links (manifest, icons, service worker) are dropped,
-so the file works when opened straight from disk or e-mailed.
+so the file works when opened straight from disk or e-mailed. The fonts load from Google Fonts
+instead of fonts/ (without a connection the page falls back to system fonts).
 """
 import os
 import re
 import sys
 
+from fetch_fonts import CSS_URL
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOCAL_FONTS = '<link rel="stylesheet" href="fonts/fonts.css">\n'
+GOOGLE_FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+                '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
+                f'<link rel="stylesheet" href="{CSS_URL}">\n')
 
 
 def read(rel):
@@ -23,6 +30,9 @@ def main():
     fragment = '--fragment' in sys.argv
     html = read('index.html')
     html = re.sub(r'<!-- standalone:start -->.*?<!-- standalone:end -->\n?', '', html, flags=re.S)
+    if LOCAL_FONTS not in html:
+        raise SystemExit(f'index.html no longer has {LOCAL_FONTS.strip()}; update build_single.py')
+    html = html.replace(LOCAL_FONTS, GOOGLE_FONTS)
 
     def inline(m):
         src = read(m.group(1))

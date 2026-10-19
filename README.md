@@ -1,6 +1,6 @@
 # Frame Designer
 
-**Use it here: https://dvsii.github.io/frame-designer/** (open it on your phone and add it to the home screen to install it; see [Install on a phone](#install-on-a-phone)).
+**Use it here: https://dvsii.github.io/frame-designer/** (open it on your phone and add it to the home screen to install it; see [Install on a phone](#install-on-a-phone)). There's also a native [iPhone app](#iphone-app) built from the same files.
 
 A lightweight web app for making picture frames. Enter the sizes you know on a drawing of the frame (artwork, outside size, rail and stile widths, in any combination) and it works out the rest, then gives you:
 
@@ -13,7 +13,7 @@ A lightweight web app for making picture frames. Enter the sizes you know on a d
 - the set of standard 8′ boards to buy that wastes the least,
 - build steps.
 
-It runs entirely in the browser: plain HTML and JavaScript, no build step, no server, no dependencies. It installs to a phone's home screen as an app and works offline.
+It runs entirely in the browser: plain HTML and JavaScript, no build step, no server, no dependencies (the fonts are bundled in `fonts/`). It installs to a phone's home screen as an app and works offline.
 
 ## Joints
 
@@ -63,11 +63,11 @@ python3 -m http.server 8000
 
 Then open http://localhost:8000. Opening `index.html` straight from disk also works, apart from offline install.
 
-`dist/frame-designer.html` is the whole app in a single file (build it with `python3 scripts/build_single.py`), handy for e-mailing or keeping on a USB stick in the shop.
+`dist/frame-designer.html` is the whole app in a single file (build it with `python3 scripts/build_single.py`), handy for e-mailing or keeping on a USB stick in the shop. It loads its fonts from Google Fonts and falls back to system fonts offline.
 
 ## Deploy as a web app
 
-Upload the folder (or just `index.html`, `manifest.webmanifest`, `sw.js`, `js/` and `icons/`) to any static host: GitHub Pages, Netlify, Cloudflare Pages, or your own server. It must be served over HTTPS for the install and offline features.
+Upload the folder (or just `index.html`, `manifest.webmanifest`, `sw.js`, `js/`, `icons/` and `fonts/`) to any static host: GitHub Pages, Netlify, Cloudflare Pages, or your own server. It must be served over HTTPS for the install and offline features.
 
 GitHub Pages, for example:
 
@@ -82,7 +82,68 @@ gh api repos/{owner}/frame-designer/pages -X POST -f "source[branch]=main" -f "s
 - **iPhone / iPad:** open the site in Safari, tap Share, then Add to Home Screen.
 - **Android:** open it in Chrome and tap Install app (or the menu, then Add to Home screen). On desktop Chrome and Edge the app shows an Install app button.
 
-After the first visit it opens offline. If you want it in the App Store or Play Store, wrap the same files with [Capacitor](https://capacitorjs.com/) (`npx cap init`, point `webDir` at this folder, `npx cap add ios` / `android`); no code changes are needed.
+After the first visit it opens offline.
+
+## iPhone app
+
+`ios/` is a native iPhone (and iPad) app made with [Capacitor](https://capacitorjs.com/): a native shell with a web view that loads these same files from inside the app, so it works with no connection at all. In the app, the cut list's **Share** button opens the iPhone share sheet (Copy, Mail, Messages, Notes, Save to Files…) in place of Copy as text and Print, and saved designs live in the app's own storage, which iOS doesn't clear. The repo root stays the GitHub Pages site; `npm run sync` copies the web files into `www/` and from there into the Xcode project.
+
+### Build it
+
+You need Xcode (free from the Mac App Store) and Node. Once:
+
+```bash
+brew install node
+```
+
+```bash
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+```
+
+```bash
+npm install
+```
+
+Then, after every change to the web files:
+
+```bash
+npm run sync
+```
+
+`npm run ios` does the same and opens the project in Xcode. To try it in the Simulator, pick an iPhone from the device menu at the top of the Xcode window and press Run (⌘R).
+
+### Run it on your own iPhone
+
+A free Apple ID is enough for this.
+
+1. In Xcode, open **Settings → Accounts**, press **+** and sign in with your Apple ID.
+2. `npm run ios`. In the project navigator click **App**, then the **App** target, then **Signing & Capabilities**. Leave **Automatically manage signing** on and set **Team** to your name (Personal Team). If Xcode says the bundle identifier `com.dvsii.framedesigner` isn't available, change it here and in `capacitor.config.json` to something of your own, such as `com.yourname.framedesigner`.
+3. Plug the iPhone in with a cable, unlock it and tap **Trust**. Turn on **Settings → Privacy & Security → Developer Mode** on the phone (it shows up once Xcode has seen the phone) and let it restart.
+4. Pick the iPhone from the device menu at the top of the Xcode window and press Run (⌘R).
+5. The first time, the phone refuses to open the app from an untrusted developer: go to **Settings → General → VPN & Device Management**, tap your Apple ID and tap **Trust**.
+
+With a free Apple ID the app stops opening after 7 days, and a free account can have only three such apps on a phone at once. Plug the phone in and press Run again to renew it for another 7 days; your saved designs are kept. After the first install, Xcode can also install over Wi-Fi when the phone is on the same network.
+
+### TestFlight and the App Store
+
+These need the [Apple Developer Program](https://developer.apple.com/programs/) ($99 a year). It also stops the 7-day expiry.
+
+1. Enrol, then in Xcode set **Team** (step 2 above) to the paid team.
+2. In [App Store Connect](https://appstoreconnect.apple.com), go to **Apps → + → New App**: platform iOS, name Frame Designer, the bundle identifier from step 2, and any SKU (for example `framedesigner`).
+3. In Xcode, under the App target's **General** tab, set **Version** (1.0) and **Build** (1). Raise the build number for every upload.
+4. Pick **Any iOS Device (arm64)** from the device menu, then **Product → Archive**. When the Organizer opens, choose **Distribute App → App Store Connect** and upload.
+5. **TestFlight:** once the build has processed (usually 15–30 minutes), add yourself and anyone else on your team as internal testers in the TestFlight tab; they install it with the TestFlight app. Testers outside your team need a short beta review first.
+6. **App Store:** fill in the listing, attach the build and press **Submit for Review**.
+
+What the review asks for:
+
+- **App privacy:** answer **Data Not Collected**. The app makes no network requests, has no analytics or accounts, and keeps designs on the phone.
+- **Privacy policy URL:** required for every app, even one that collects nothing. A short page on the GitHub Pages site saying so is enough.
+- **Support URL:** a page where people can reach you, such as the GitHub Pages site or https://github.com/dvsii/frame-designer/issues.
+- **Screenshots:** at least one set for the largest iPhone (6.9″, 1320 × 2868 portrait, from the iPhone Pro Max simulator: **File → Save Screen** in the Simulator). The app also runs on iPad, so you'll need 13″ iPad screenshots too, unless you make it iPhone-only under **General → Supported Destinations**.
+- **Age rating:** the questionnaire is all "None", which gives 4+. Category: Productivity or Utilities. Price: free, or whatever you choose.
+- **Export compliance:** already answered. `Info.plist` declares that the app uses no non-exempt encryption, so uploads don't ask.
+- **Minimum functionality (guideline 4.2):** Apple sometimes turns down apps that are just a website in a wrapper. Frame Designer runs fully offline from files inside the app and uses the native share sheet and storage, which is the usual answer to that. If a reviewer pushes back, reply in App Store Connect explaining that it's an offline design tool, not a website.
 
 ## Tests
 
@@ -98,9 +159,13 @@ js/render.js          small z-buffer renderer with wood grain and outlines
 js/app.js             UI wiring: drawing, editor, inspector, results, saved designs
 sw.js                 offline cache for the installed app
 manifest.webmanifest  install metadata
-icons/                app icons (regenerate with scripts/make_icons.py)
-scripts/              icon and single-file builders
+icons/                app icons (regenerate with scripts/make_icons.py, which also writes the iPhone app icon)
+fonts/                Barlow, Barlow Semi Condensed and IBM Plex Mono, with their licences (scripts/fetch_fonts.py)
+scripts/              icon, font and single-file builders, and copy_www.mjs for the iPhone app
 tests/index.html      browser test page
+package.json          Capacitor and the iPhone app's npm scripts
+capacitor.config.json app id and name for the iPhone app
+ios/                  the Xcode project (www/ and node_modules/ are generated and not committed)
 ```
 
-Saved designs and your last design are kept in the browser's local storage on that device only.
+Saved designs and your last design are kept in the browser's local storage on that device only (in the iPhone app, in the app's own storage). The web app and the iPhone app don't share them.

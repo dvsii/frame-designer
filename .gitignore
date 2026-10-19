@@ -1,2 +1,6 @@
 .DS_Store
 .claude/
+
+# Capacitor (iPhone app): installed packages and the assembled web files
+node_modules/
+www/

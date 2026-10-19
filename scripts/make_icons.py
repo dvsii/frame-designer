@@ -1,6 +1,7 @@
 """Draw the Frame Designer app icons (a mitered corner in tape-measure yellow) as PNGs.
 
-Pure standard library, so it runs anywhere Python 3 does:
+Writes the web icons to icons/ and, when the Capacitor iOS project is there, the 1024 px App Store icon
+(opaque, as Apple requires) into it. Pure standard library, so it runs anywhere Python 3 does:
     python3 scripts/make_icons.py
 """
 import os
@@ -80,3 +81,6 @@ if __name__ == '__main__':
     png(os.path.join(out, 'icon-512.png'), 512, 1.0)
     png(os.path.join(out, 'icon-maskable-512.png'), 512, 0.78)
     png(os.path.join(out, 'apple-touch-icon.png'), 180, 0.9)
+    ios = os.path.join(ROOT, 'ios', 'App', 'App', 'Assets.xcassets', 'AppIcon.appiconset')
+    if os.path.isdir(ios):
+        png(os.path.join(ios, 'AppIcon-512@2x.png'), 1024, 0.9)

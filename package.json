@@ -1,0 +1,21 @@
+{
+  "name": "frame-designer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Picture frame and panel door cut lists, joinery details and stock layouts. The web app is the repo root; the iPhone app wraps it with Capacitor.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "node scripts/copy_www.mjs",
+    "sync": "node scripts/copy_www.mjs && cap sync ios",
+    "ios": "node scripts/copy_www.mjs && cap sync ios && cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/share": "^8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3"
+  }
+}

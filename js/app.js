@@ -4,11 +4,27 @@
   const C = window.FWCore, G = window.FWGeom, RN = window.FWRender;
   const $ = (s, el) => (el || document).querySelector(s);
   const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
+  // In the iPhone app (Capacitor) the native bridge puts window.Capacitor and its plugins on the page before any script runs.
+  const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const plugins = (native && window.Capacitor.Plugins) || {};
   // Storage keys keep the app's old name so designs saved before the rename still load.
   const KEY_CUR = 'framewright.current', KEY_SAVED = 'framewright.designs';
+  // The iPhone app keeps designs in its preferences (UserDefaults), which iOS doesn't clear the way it can clear a
+  // web view's storage. They're read once before start-up (load) so get() can stay synchronous.
+  const prefs = plugins.Preferences, mem = {};
   const store = {
-    get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } },
+    get(k) {
+      if (prefs) return mem[k] || null;
+      try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; }
+    },
+    set(k, v) {
+      if (prefs) { mem[k] = v; prefs.set({ key: k, value: JSON.stringify(v) }).catch(() => { /* not saved */ }); return; }
+      try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ }
+    },
+    load() {
+      return Promise.all([KEY_CUR, KEY_SAVED].map(k => prefs.get({ key: k })
+        .then(r => { try { mem[k] = JSON.parse(r.value); } catch (e) { /* missing or unreadable */ } }, () => {})));
+    },
   };
   const inFrame = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
   const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -37,7 +53,8 @@
     } catch (e) { return null; }
   }
 
-  let state = C.normalizeState(decodeHash() || store.get(KEY_CUR) || C.defaultState());
+  const initialState = () => C.normalizeState(decodeHash() || store.get(KEY_CUR) || C.defaultState());
+  let state = initialState();
   let R = null;
   let frontModel = null, frontPrep = null, cornerPrep = null, cornerKey = '';
   const ANGLES = { iso: [0.6, 0.45], back: [Math.PI - 0.6, 0.45], flat: [0, 0] };
@@ -538,7 +555,7 @@
 
   /* ---------- Dimension editor ---------- */
 
-  const ed = { path: null };
+  const ed = { path: null, anchor: null };
   function openEditor(path, anchor) {
     ed.path = path;
     const box = $('#editor'), input = $('#ed-input');
@@ -557,19 +574,29 @@
       : [[-0.125, '−1/8'], [-0.0625, '−1/16'], [0.0625, '+1/16'], [0.125, '+1/8']];
     $('#ed-nudge').innerHTML = nudges.map(([v, t]) => `<button type="button" data-nudge="${v}">${t}</button>`).join('');
     box.hidden = false;
-    const r = anchor.getBoundingClientRect(), bw = box.offsetWidth, bh = box.offsetHeight;
-    let left = clamp(r.left + r.width / 2 - bw / 2, 12, window.innerWidth - bw - 12);
-    let top = r.bottom + 8;
-    if (top + bh > window.innerHeight - 12) top = Math.max(12, r.top - bh - 8);
-    box.style.left = left + 'px';
-    box.style.top = top + 'px';
+    ed.anchor = anchor;
+    placeEditor();
     input.focus();
     input.select();
+  }
+  /** Below the dimension if it fits, else above it, kept inside the visual viewport so a phone's keyboard doesn't cover it. */
+  function placeEditor() {
+    const box = $('#editor'), a = ed.anchor;
+    if (box.hidden || !a || !a.isConnected) return;
+    const vv = window.visualViewport, bottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+    // The body's top padding is the status bar's height in the iPhone app (0 in a browser).
+    const minTop = (vv ? vv.offsetTop : 0) + (parseFloat(getComputedStyle(document.body).paddingTop) || 0) + 12;
+    const r = a.getBoundingClientRect(), bw = box.offsetWidth, bh = box.offsetHeight;
+    const left = clamp(r.left + r.width / 2 - bw / 2, 12, window.innerWidth - bw - 12);
+    let top = r.bottom + 8;
+    if (top + bh > bottom - 12) top = Math.max(minTop, Math.min(r.top - 8, bottom - 12) - bh);
+    box.style.left = left + 'px';
+    box.style.top = top + 'px';
   }
   function closeEditor(refocus) {
     const path = ed.path;
     $('#editor').hidden = true;
-    ed.path = null;
+    ed.path = null; ed.anchor = null;
     if (refocus && path) { const g = $(`#front-over .chip[data-path="${path}"]`); if (g) g.focus(); }
   }
   function commitEditor() {
@@ -608,6 +635,7 @@
     document.addEventListener('pointerdown', e => {
       if (!box.hidden && !box.contains(e.target) && !e.target.closest('.chip')) closeEditor(false);
     });
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', placeEditor);
   }
 
   /* ---------- Corner model ---------- */
@@ -891,7 +919,8 @@
     const list = savedList();
     $('#design-list').innerHTML = list.map((x, i) =>
       `<li><span class="name">${esc(x.name)}</span><span class="meta">${fr(x.summary || '')}</span><button type="button" class="btn" data-load="${i}">Open</button><button type="button" class="btn" data-del="${i}">Delete</button></li>`).join('');
-    $('#design-empty').textContent = list.length ? 'Saved designs stay in this browser on this device.' : 'Nothing saved yet. Saved designs stay in this browser on this device.';
+    const where = native ? 'Saved designs stay on this device.' : 'Saved designs stay in this browser on this device.';
+    $('#design-empty').textContent = list.length ? where : `Nothing saved yet. ${where}`;
   }
   function bindHeader() {
     const panel = $('#designs'), btn = $('#btn-designs');
@@ -930,8 +959,22 @@
       }
     });
     $('#suggest').addEventListener('click', e => { const b = e.target.closest('#use-suggest'); if (b) useSuggest(b); });
-    $('#btn-copy').addEventListener('click', () => { if (R.ok) copyText(cutListText(), 'Cut list copied'); });
-    if (!inFrame) {
+    // In the iPhone app the share sheet stands in for copying and printing (it has Copy, Mail, Notes, Save to Files…);
+    // there's no web link to copy or app to install, and the service worker has nothing to do.
+    const share = plugins.Share;
+    if (share) $('#btn-copy').textContent = 'Share';
+    $('#btn-copy').addEventListener('click', () => {
+      if (!R.ok) return;
+      if (share) share.share({ title: 'Frame Designer cut list', text: cutListText() }).catch(() => { /* closed without sharing */ });
+      else copyText(cutListText(), 'Cut list copied');
+    });
+    if (native) {
+      $('#footer-local').textContent = 'Frame Designer runs entirely on this device. Nothing you enter leaves it.';
+      // iOS zooms in on any input under 16px when it's focused, and in an app nothing zooms back out: keep the page at 1:1.
+      const vp = $('meta[name="viewport"]');
+      if (vp) vp.content += ', maximum-scale=1';
+    }
+    if (!inFrame && !native) {
       const link = $('#btn-link');
       link.hidden = false;
       link.addEventListener('click', () => copyText(`${location.href.split('#')[0]}#d=${encodeState(state)}`, 'Link to this design copied'));
@@ -988,5 +1031,6 @@
     try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', schedule); } catch (e) { /* older browsers */ }
     setTimeout(drawThumbs, 30);
   }
-  init();
+  if (prefs) store.load().then(() => { state = initialState(); init(); });
+  else init();
 })();
