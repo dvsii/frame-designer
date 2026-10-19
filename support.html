@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Support · Frame Designer</title>
+<meta name="description" content="Get help with Frame Designer: report a problem or ask a question on GitHub, and find out where your saved designs are kept.">
+<meta name="theme-color" content="#1c211e">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+/* The same tokens as index.html, without the app. privacy.html has a copy of these styles; keep the two in step. */
+:root {
+  --bg: #e8eae3;
+  --panel: #f7f8f4;
+  --ink: #1c211e;
+  --muted: #58615a;
+  --line: #c4cbc0;
+  --tape: #f3c22f;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r: 5px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121513; --panel: #1a1e1b; --ink: #e4e8e2; --muted: #98a299; --line: #313833;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121513; --panel: #1a1e1b; --ink: #e4e8e2; --muted: #98a299; --line: #313833;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.55 var(--font-body); padding-top: env(safe-area-inset-top, 0px); }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+a { color: inherit; text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+h1, h2 { font-family: var(--font-display); font-weight: 600; margin: 0; text-wrap: balance; }
+h1 { font-size: 34px; line-height: 1.1; margin-top: 28px; }
+h2 { font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; margin: 32px 0 0; }
+p, ul { margin: 10px 0 0; max-width: 68ch; }
+ul { padding-left: 20px; display: grid; gap: 6px; }
+
+.wrap { max-width: 760px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-bottom: max(40px, env(safe-area-inset-bottom, 0px)); }
+.top { padding-block: 16px 12px; border-bottom: 1px solid var(--line); }
+.brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; }
+.brand svg { width: 38px; height: 38px; flex: none; }
+.brand b { display: block; font: 700 26px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; }
+.brand .sub { display: block; margin-top: 3px; color: var(--muted); font-size: 13.5px; }
+.brand:hover .sub { color: var(--ink); }
+.updated { color: var(--muted); font-size: 14px; margin-top: 6px; }
+.lead { font-size: 19px; margin-top: 18px; }
+.sum { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); margin: 22px 0 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); overflow: hidden; }
+.sum div { padding: 9px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 0 -1px -1px 0; }
+.sum dt { font-size: 12px; color: var(--muted); font-family: var(--font-display); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.sum dd { margin: 2px 0 0; font-family: var(--font-num); font-size: 15px; }
+.btn { display: inline-block; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: var(--r); padding: 8px 14px; font-weight: 500; font-size: 15px; text-decoration: none; }
+.btn:hover { box-shadow: inset 0 -3px 0 var(--tape); }
+footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; display: flex; gap: 4px 16px; flex-wrap: wrap; }
+@media (max-width: 560px) {
+  .brand b { font-size: 22px; }
+  h1 { font-size: 30px; }
+  .lead { font-size: 17.5px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="./">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <rect x="1" y="1" width="38" height="38" rx="4" fill="var(--ink)"/>
+        <path d="M7 7h26l-8 8H15v10l-8 8z" fill="var(--tape)"/>
+        <path d="M7 7l8 8" stroke="var(--ink)" stroke-width="1.6"/>
+      </svg>
+      <span><b>Frame Designer</b><span class="sub">Open the app</span></span>
+    </a>
+  </header>
+
+  <main>
+    <h1>Support</h1>
+    <p class="lead">Questions, problems and ideas for Frame Designer, on the website or the iPhone app, go to its issue tracker on GitHub.</p>
+    <p><a class="btn" href="https://github.com/dvsii/frame-designer/issues">Open the issue tracker</a></p>
+    <p>Search the open and closed issues first, in case someone has asked already. To post, you'll need a free GitHub account. Issues are public, so leave out anything private.</p>
+
+    <h2>Reporting a problem</h2>
+    <p>It helps to include:</p>
+    <ul>
+      <li>What you were making: a frame or a panel door, the joint and the sizes. On the website, Copy link gives a link with the whole design in it; paste that.</li>
+      <li>What you expected and what you got instead. A screenshot helps.</li>
+      <li>Your device, and whether you used the website (in which browser) or the iPhone app (on which iOS version).</li>
+    </ul>
+
+    <h2>Where your saved designs are</h2>
+    <p>Saved designs stay on the device you made them on and are never sent anywhere, so they can't be recovered from a server. On the website they're kept in that browser: another browser or device won't see them, and clearing the browser's data for the site deletes them. In the iPhone app they're kept in the app on your phone: they survive updates, but deleting the app deletes them. To move a design from the website to another device, use Copy link and open the link there.</p>
+
+    <h2>Privacy</h2>
+    <p>Frame Designer collects no data. See the <a href="privacy.html">privacy policy</a>.</p>
+  </main>
+
+  <footer>
+    <a href="./">Frame Designer</a>
+    <a href="privacy.html">Privacy policy</a>
+  </footer>
+</div>
+</body>
+</html>

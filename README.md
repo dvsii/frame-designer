@@ -138,8 +138,8 @@ These need the [Apple Developer Program](https://developer.apple.com/programs/) 
 What the review asks for:
 
 - **App privacy:** answer **Data Not Collected**. The app makes no network requests, has no analytics or accounts, and keeps designs on the phone.
-- **Privacy policy URL:** required for every app, even one that collects nothing. A short page on the GitHub Pages site saying so is enough.
-- **Support URL:** a page where people can reach you, such as the GitHub Pages site or https://github.com/dvsii/frame-designer/issues.
+- **Privacy policy URL:** https://dvsii.github.io/frame-designer/privacy.html ([privacy.html](privacy.html)). The app's footer links to it too, which the review also expects.
+- **Support URL:** https://dvsii.github.io/frame-designer/support.html ([support.html](support.html)), which points people to https://github.com/dvsii/frame-designer/issues.
 - **Screenshots:** at least one set for the largest iPhone (6.9″, 1320 × 2868 portrait, from the iPhone Pro Max simulator: **File → Save Screen** in the Simulator). The app also runs on iPad, so you'll need 13″ iPad screenshots too, unless you make it iPhone-only under **General → Supported Destinations**.
 - **Age rating:** the questionnaire is all "None", which gives 4+. Category: Productivity or Utilities. Price: free, or whatever you choose.
 - **Export compliance:** already answered. `Info.plist` declares that the app uses no non-exempt encryption, so uploads don't ask.
@@ -153,6 +153,8 @@ Start the local server and open http://localhost:8000/tests/ — the page runs a
 
 ```
 index.html            page, styles and markup
+privacy.html          privacy policy (the App Store's privacy policy URL)
+support.html          support page (the App Store's support URL)
 js/core.js            sizes, joints, cut list, materials, steps, stock layout (no DOM; testable)
 js/geom.js            convex solids, plane clipping, the 3D frame model for each joint
 js/render.js          small z-buffer renderer with wood grain and outlines
