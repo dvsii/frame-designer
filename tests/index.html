@@ -188,6 +188,59 @@
     ok(C.normalizeState(C.defaultState()).joint === 'miter', 'default joint is the plain miter');
   }
 
+  // Stock: ripping boards, buying the least wood, molding
+  {
+    const k = 0.125, opts = C.lumberOptions(0.75, 'in');
+    close(C.ripWidth([2, 2, 2], k), 6.25, 'three 2" rips take 6 1/4"');
+    const three = C.chooseBoards([2, 2, 2], opts, k);
+    // A 1×3 and a 1×5 (7" of board) beat one 1×8 (7 1/4").
+    close(three.boards.reduce((a, b) => a + b.opt.w, 0), 7, 'three 2" strips: 1×3 + 1×5 beats a 1×8');
+    const mix = C.chooseBoards([3, 2, 2, 2, 2], opts, k);
+    const brute = (() => { // every way of splitting five strips over boards, cheapest total width
+      let best = Infinity;
+      const ws = [3, 2, 2, 2, 2];
+      const rec = (i, bins) => {
+        if (i === ws.length) { const c = bins.reduce((a, b) => a + (opts.find(o => o.w >= C.ripWidth(b, k) - 1e-9) || { w: Infinity }).w, 0); best = Math.min(best, c); return; }
+        bins.forEach((b, j) => { b.push(ws[i]); rec(i + 1, bins); b.pop(); });
+        bins.push([ws[i]]); rec(i + 1, bins); bins.pop();
+      };
+      rec(0, []);
+      return best;
+    })();
+    close(mix.boards.reduce((a, b) => a + b.opt.w, 0), brute, 'board choice matches brute force');
+    ok(mix.boards.every(b => C.ripWidth(b.strips, k) <= b.opt.w + 1e-9), 'chosen rips fit their boards');
+    ok(C.chooseBoards([12], opts, k) === null, 'no standard board for a 12" strip');
+    ok(C.lumberOptions(0.9, 'in')[0].name === '5/4×2', 'thicker stock picks 5/4 boards');
+    ok(C.lumberOptions(18 / 25.4, 'mm')[2].name === '18 × 94 mm', 'metric boards');
+
+    R = run({ qty: 4, linkWidths: false, stile: 2, top: 2, bottom: 3 });
+    const sg = R.suggest, nItems = 16;
+    ok(sg && sg.best, 'suggestion made');
+    ok(sg.best.boards.reduce((a, b) => a + b.lanes.reduce((x, l) => x + l.cuts.length, 0), 0) === nItems, 'suggested boards hold every piece');
+    ok(sg.singles.every(x => x.waste >= sg.best.waste - 1e-9), 'best mix wastes no more than any single size');
+    ok(sg.best.boards.every(b => b.lanes.every(l => l.cuts.every(c => Math.abs(c.width - l.width) < 1e-6) && l.used <= 96 + 1e-9)), 'each strip holds pieces of its width, within the board');
+    ok(run({ stock: Object.assign(C.defaultState().stock, { suggest: false }) }).suggest === null, 'suggestions can be turned off');
+
+    const stock = extra => Object.assign(C.defaultState().stock, extra);
+    R = run({ stock: stock({ source: 'boards', boards: [{ w: 5.5, t: 0.75, l: 36, n: 1 }, { w: 6, t: 0.5, l: 96, n: 1 }] }) });
+    ok(R.layout.mode === 'boards' && R.layout.buyCount === 0 && R.layout.boards.length === 1, 'pieces fit on one 5 1/2 x 36 board', JSON.stringify(R.layout.boards.map(b => b.name)));
+    ok(R.layout.boards[0].lanes.length === 2 && R.layout.thin === 1, 'two rips; the 1/2" board is too thin');
+    ok(R.warnings.some(w => /thinner/.test(w.text)), 'thin board warned about');
+    R = run({ stock: stock({ source: 'boards', boards: [{ w: 2.5, t: 0.75, l: 20, n: 1 }] }) });
+    ok(R.layout.buyCount >= 1 && R.layout.unplaced.length === 0 && R.layout.boards[0].src === 'have', 'own board used first, the rest bought');
+    R = run({ stock: stock({ source: 'boards', buy: false, boards: [{ w: 2.5, t: 0.75, l: 20, n: 1 }] }) });
+    ok(R.layout.unplaced.length === 3 && R.warnings.some(w => /don't fit/.test(w.text)), 'without buying, leftovers are flagged', R.layout.unplaced.length);
+    const placed = L => L.boards.reduce((a, b) => a + b.lanes.reduce((x, l) => x + l.cuts.length, 0), 0);
+    R = run({ qty: 3, stock: stock({ source: 'boards', boards: [{ w: 5.5, t: 1, l: 48, n: 1 }, { w: 3.5, t: 0.75, l: 30, n: 2 }] }) });
+    ok(placed(R.layout) + R.layout.unplaced.length === 12, 'every piece placed exactly once');
+    ok(R.layout.boards.every(b => C.ripWidth(b.lanes.map(l => l.width), 0.125) <= b.w + 1e-9 && b.lanes.every(l => l.used <= b.l + 1e-9)), 'rips fit each board');
+
+    R = run({ solve: 'widths', linkWidths: false, top: 3, stock: stock({ source: 'molding' }) });
+    ok(R.state.solve === 'outside' && R.state.linkWidths && R.state.top === R.state.stile, 'molding is the same all round');
+    ok(R.suggest === null && R.layout.mode === 'strips', 'molding is laid out as lengths, no board suggestion');
+    ok(C.normalizeState({ v: 2, stock: { length: 96 } }).stock.source === 'strips', 'older stock settings default to strips');
+  }
+
   // Render each joint's corner so the shapes can be checked by eye.
   const views = document.getElementById('views');
   const t0 = performance.now();

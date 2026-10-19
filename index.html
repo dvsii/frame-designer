@@ -245,6 +245,23 @@ table { border-collapse: collapse; width: 100%; }
 .board-svg .bl { font: 600 11px var(--font-display); letter-spacing: .08em; fill: var(--muted); text-transform: uppercase; }
 .board-svg .over { fill: var(--error-bg); stroke: var(--error); }
 .stock-sum { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+.suggest { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); padding: 12px 14px; margin: 0 0 16px; }
+.suggest h3 { font-size: 14px; color: var(--ink); margin-bottom: 6px; }
+.suggest .best { font-size: 15px; margin: 0 0 4px; }
+.suggest .meta { color: var(--muted); font-size: 13.5px; margin: 0 0 8px; }
+.suggest table { width: auto; border-collapse: collapse; font-size: 13.5px; margin: 4px 0 10px; }
+.suggest td, .suggest th { padding: 3px 14px 3px 0; text-align: left; }
+.suggest th { font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.suggest td.n { font-family: var(--font-num); }
+.boards-head, .board-row { display: grid; grid-template-columns: 1fr 1fr 1fr 52px 30px; gap: 6px; align-items: center; }
+.boards-head span { font-size: 11px; font-family: var(--font-display); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.board-row .inp input { padding-inline: 6px; }
+.board-row .del { border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; height: 36px; }
+.board-row .del:hover { color: var(--error); }
+.board-rows:empty::before { content: 'No boards yet. Add the ones you have, or let it pick boards to buy.'; color: var(--muted); font-size: 13px; }
+.add-board { justify-self: start; }
+.field.locked input { opacity: .55; }
+.lgroup .tag-buy { color: var(--tape-ink); background: var(--tape); border-radius: 3px; padding: 1px 6px; font-size: 11px; font-family: var(--font-display); letter-spacing: .08em; text-transform: uppercase; margin-left: 6px; }
 
 /* Steps */
 #steps ol { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 8px; max-width: 75ch; }
@@ -483,20 +500,50 @@ footer p { margin: 0; max-width: 80ch; }
         </fieldset>
 
         <fieldset>
-          <legend>Cutting</legend>
+          <legend>Stock and cutting</legend>
+          <div class="field">
+            <span class="lbl" id="lbl-source">Cut the pieces from</span>
+            <div class="seg seg-wide" data-seg="source" role="group" aria-labelledby="lbl-source">
+              <button type="button" data-val="strips">Strips at width</button>
+              <button type="button" data-val="boards">Boards</button>
+              <button type="button" data-val="molding">Molding</button>
+            </div>
+          </div>
+          <p class="help" id="source-help"></p>
+          <div id="molding-fields" class="field-list" style="display:grid;gap:10px">
+            <div class="pair">
+              <label class="field"><span class="lbl">Molding width</span>
+                <span class="inp"><input id="f-mold-w" data-path="stile" spellcheck="false"><span class="u"></span></span></label>
+              <label class="field"><span class="lbl">Thickness</span>
+                <span class="inp"><input id="f-mold-t" data-path="thickness" spellcheck="false"><span class="u"></span></span></label>
+            </div>
+            <div class="pair">
+              <label class="field"><span class="lbl">Rabbet width</span>
+                <span class="inp"><input id="f-mold-rw" data-path="rabbetW" spellcheck="false"><span class="u"></span></span></label>
+              <label class="field"><span class="lbl">Rabbet depth</span>
+                <span class="inp"><input id="f-mold-rd" data-path="rabbetD" spellcheck="false"><span class="u"></span></span></label>
+            </div>
+          </div>
+          <div id="boards-fields" class="field-list" style="display:grid;gap:8px">
+            <div class="boards-head"><span>Width</span><span>Thick</span><span>Length</span><span>Qty</span><span></span></div>
+            <div id="board-rows" class="board-rows"></div>
+            <button type="button" class="btn add-board" id="add-board">Add a board</button>
+            <label class="check"><input type="checkbox" id="f-buy" data-path="stock.buy" data-kind="bool"> Buy standard boards for whatever doesn't fit</label>
+          </div>
           <div class="pair">
-            <label class="field"><span class="lbl">Board length</span>
+            <label class="field"><span class="lbl" id="lbl-board">Board length</span>
               <span class="inp"><input id="f-board" data-path="stock.length" spellcheck="false"><span class="u"></span></span></label>
             <label class="field"><span class="lbl">Saw kerf</span>
               <span class="inp"><input id="f-kerf" data-path="stock.kerf" spellcheck="false"><span class="u"></span></span></label>
           </div>
           <div class="pair">
-            <label class="field"><span class="lbl">End trim per board</span>
+            <label class="field"><span class="lbl" id="lbl-trim">End trim per board</span>
               <span class="inp"><input id="f-trim" data-path="stock.trim" spellcheck="false"><span class="u"></span></span></label>
             <label class="field"><span class="lbl">Frames to make</span>
               <span class="inp"><input id="f-qty" data-path="qty" data-kind="int" inputmode="numeric" spellcheck="false"></span></label>
           </div>
           <label class="check"><input type="checkbox" id="f-grain" data-path="stock.grain" data-kind="bool"> Cut each frame in order so the grain wraps the corners</label>
+          <label class="check" id="suggest-check"><input type="checkbox" id="f-suggest" data-path="stock.suggest" data-kind="bool"> Suggest the boards to buy that waste the least</label>
           <label class="field"><span class="lbl">Round to</span>
             <span class="inp"><select id="f-prec"></select></span></label>
         </fieldset>
@@ -532,6 +579,7 @@ footer p { margin: 0; max-width: 80ch; }
       <span class="sub" id="stock-sub"></span>
     </div>
     <p class="stock-sum" id="stock-sum"></p>
+    <div class="suggest" id="suggest" hidden></div>
     <div class="layout" id="layout"></div>
   </section>
 

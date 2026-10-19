@@ -231,6 +231,23 @@ table { border-collapse: collapse; width: 100%; }
 .board-svg .bl { font: 600 11px var(--font-display); letter-spacing: .08em; fill: var(--muted); text-transform: uppercase; }
 .board-svg .over { fill: var(--error-bg); stroke: var(--error); }
 .stock-sum { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+.suggest { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); padding: 12px 14px; margin: 0 0 16px; }
+.suggest h3 { font-size: 14px; color: var(--ink); margin-bottom: 6px; }
+.suggest .best { font-size: 15px; margin: 0 0 4px; }
+.suggest .meta { color: var(--muted); font-size: 13.5px; margin: 0 0 8px; }
+.suggest table { width: auto; border-collapse: collapse; font-size: 13.5px; margin: 4px 0 10px; }
+.suggest td, .suggest th { padding: 3px 14px 3px 0; text-align: left; }
+.suggest th { font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.suggest td.n { font-family: var(--font-num); }
+.boards-head, .board-row { display: grid; grid-template-columns: 1fr 1fr 1fr 52px 30px; gap: 6px; align-items: center; }
+.boards-head span { font-size: 11px; font-family: var(--font-display); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.board-row .inp input { padding-inline: 6px; }
+.board-row .del { border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; height: 36px; }
+.board-row .del:hover { color: var(--error); }
+.board-rows:empty::before { content: 'No boards yet. Add the ones you have, or let it pick boards to buy.'; color: var(--muted); font-size: 13px; }
+.add-board { justify-self: start; }
+.field.locked input { opacity: .55; }
+.lgroup .tag-buy { color: var(--tape-ink); background: var(--tape); border-radius: 3px; padding: 1px 6px; font-size: 11px; font-family: var(--font-display); letter-spacing: .08em; text-transform: uppercase; margin-left: 6px; }
 
 /* Steps */
 #steps ol { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 8px; max-width: 75ch; }
@@ -467,20 +484,50 @@ footer p { margin: 0; max-width: 80ch; }
         </fieldset>
 
         <fieldset>
-          <legend>Cutting</legend>
+          <legend>Stock and cutting</legend>
+          <div class="field">
+            <span class="lbl" id="lbl-source">Cut the pieces from</span>
+            <div class="seg seg-wide" data-seg="source" role="group" aria-labelledby="lbl-source">
+              <button type="button" data-val="strips">Strips at width</button>
+              <button type="button" data-val="boards">Boards</button>
+              <button type="button" data-val="molding">Molding</button>
+            </div>
+          </div>
+          <p class="help" id="source-help"></p>
+          <div id="molding-fields" class="field-list" style="display:grid;gap:10px">
+            <div class="pair">
+              <label class="field"><span class="lbl">Molding width</span>
+                <span class="inp"><input id="f-mold-w" data-path="stile" spellcheck="false"><span class="u"></span></span></label>
+              <label class="field"><span class="lbl">Thickness</span>
+                <span class="inp"><input id="f-mold-t" data-path="thickness" spellcheck="false"><span class="u"></span></span></label>
+            </div>
+            <div class="pair">
+              <label class="field"><span class="lbl">Rabbet width</span>
+                <span class="inp"><input id="f-mold-rw" data-path="rabbetW" spellcheck="false"><span class="u"></span></span></label>
+              <label class="field"><span class="lbl">Rabbet depth</span>
+                <span class="inp"><input id="f-mold-rd" data-path="rabbetD" spellcheck="false"><span class="u"></span></span></label>
+            </div>
+          </div>
+          <div id="boards-fields" class="field-list" style="display:grid;gap:8px">
+            <div class="boards-head"><span>Width</span><span>Thick</span><span>Length</span><span>Qty</span><span></span></div>
+            <div id="board-rows" class="board-rows"></div>
+            <button type="button" class="btn add-board" id="add-board">Add a board</button>
+            <label class="check"><input type="checkbox" id="f-buy" data-path="stock.buy" data-kind="bool"> Buy standard boards for whatever doesn't fit</label>
+          </div>
           <div class="pair">
-            <label class="field"><span class="lbl">Board length</span>
+            <label class="field"><span class="lbl" id="lbl-board">Board length</span>
               <span class="inp"><input id="f-board" data-path="stock.length" spellcheck="false"><span class="u"></span></span></label>
             <label class="field"><span class="lbl">Saw kerf</span>
               <span class="inp"><input id="f-kerf" data-path="stock.kerf" spellcheck="false"><span class="u"></span></span></label>
           </div>
           <div class="pair">
-            <label class="field"><span class="lbl">End trim per board</span>
+            <label class="field"><span class="lbl" id="lbl-trim">End trim per board</span>
               <span class="inp"><input id="f-trim" data-path="stock.trim" spellcheck="false"><span class="u"></span></span></label>
             <label class="field"><span class="lbl">Frames to make</span>
               <span class="inp"><input id="f-qty" data-path="qty" data-kind="int" inputmode="numeric" spellcheck="false"></span></label>
           </div>
           <label class="check"><input type="checkbox" id="f-grain" data-path="stock.grain" data-kind="bool"> Cut each frame in order so the grain wraps the corners</label>
+          <label class="check" id="suggest-check"><input type="checkbox" id="f-suggest" data-path="stock.suggest" data-kind="bool"> Suggest the boards to buy that waste the least</label>
           <label class="field"><span class="lbl">Round to</span>
             <span class="inp"><select id="f-prec"></select></span></label>
         </fieldset>
@@ -516,6 +563,7 @@ footer p { margin: 0; max-width: 80ch; }
       <span class="sub" id="stock-sub"></span>
     </div>
     <p class="stock-sum" id="stock-sum"></p>
+    <div class="suggest" id="suggest" hidden></div>
     <div class="layout" id="layout"></div>
   </section>
 
@@ -610,7 +658,9 @@ footer p { margin: 0; max-width: 80ch; }
       mat: { on: false, side: 2, top: 2, bottom: 2.5, overlap: 0.125 },
       through: 'stiles',
       jp: {},                    // per-joint overrides; missing means automatic
-      stock: { length: 96, kerf: 0.125, trim: 0, grain: true },
+      // source: 'strips' = stock already at frame width, 'boards' = rip from the boards listed,
+      // 'molding' = ready-made molding whose profile sets the widths, thickness and rabbet.
+      stock: { length: 96, kerf: 0.125, trim: 0, grain: true, source: 'strips', boards: [], buy: true, suggest: true },
       qty: 1,
     };
   }
@@ -644,6 +694,17 @@ footer p { margin: 0; max-width: 80ch; }
     for (const k of ['w', 'h']) { s.inner[k] = num(s.inner[k], def.inner[k]); s.outside[k] = num(s.outside[k], 0); }
     s.qty = Math.max(1, Math.min(99, Math.round(num(s.qty, 1))));
     s.stock.length = Math.max(1, num(s.stock.length, 96));
+    if (!['strips', 'boards', 'molding'].includes(s.stock.source)) s.stock.source = 'strips';
+    s.stock.boards = (Array.isArray(s.stock.boards) ? s.stock.boards : []).slice(0, 50).map(b => ({
+      w: Math.max(0.01, num(b && b.w, 3.5)), t: Math.max(0.01, num(b && b.t, 0.75)), l: Math.max(0.1, num(b && b.l, 96)),
+      n: Math.max(1, Math.min(99, Math.round(num(b && b.n, 1)))),
+    }));
+    for (const k of ['buy', 'suggest', 'grain']) s.stock[k] = s.stock[k] !== false;
+    if (s.stock.source === 'molding') {
+      // A molding profile is the same all round, so the widths can't be the calculated quantity.
+      s.linkWidths = true;
+      if (s.solve === 'widths') s.solve = 'outside';
+    }
     if (s.solve === 'widths') s.linkWidths = false;
     if (s.linkWidths) s.top = s.bottom = s.stile;
     return s;
@@ -1292,56 +1353,246 @@ footer p { margin: 0; max-width: 80ch; }
     return [c('Top', top), c('Side', st), c('Bottom', bot), c('Side', st, true)];
   }
 
-  function layoutStock(cuts, s, d) {
-    const L = s.stock.length, k = Math.max(0, s.stock.kerf), trim = Math.max(0, s.stock.trim);
-    const usable = L - trim;
-    const groups = [];
+  function stockItems(cuts, s) {
+    const k = Math.max(0, s.stock.kerf), items = [];
     for (let f = 0; f < s.qty; f++) {
       cuts.forEach((c, i) => {
         const a = Math.min(60, Math.max(...c.angles.map(Math.abs)));
-        const it = Object.assign({}, c, { frame: f, seq: i, allow: k / Math.cos(a / DEG) });
-        let g = groups.find(x => Math.abs(x.width - it.width) < 1e-6);
-        if (!g) groups.push(g = { width: it.width, thick: d.T, items: [], boards: [] });
-        g.items.push(it);
+        items.push(Object.assign({}, c, { frame: f, seq: i, allow: k / Math.cos(a / DEG) }));
       });
     }
-    for (const g of groups) {
-      const boards = g.boards;
-      const fresh = () => { const b = { cuts: [], used: 0, over: false }; boards.push(b); return b; };
-      const fits = (b, it) => !b.over && b.used + it.length <= usable + 1e-9;
-      const put = (b, it) => { b.cuts.push(Object.assign({}, it, { start: trim + b.used })); b.used += it.length + it.allow; };
-      const overflow = it => { const b = fresh(); b.over = true; put(b, it); };
-      if (s.stock.grain) {
-        let cur = null;
-        for (let f = 0; f < s.qty; f++) {
-          const seq = g.items.filter(it => it.frame === f);
-          const need = seq.reduce((a, it) => a + it.length + it.allow, 0) - (seq.length ? seq[seq.length - 1].allow : 0);
-          if (cur && cur.used + need > usable + 1e-9 && need <= usable + 1e-9) cur = null;
-          for (const it of seq) {
-            if (it.length > usable + 1e-9) { overflow(it); continue; }
-            if (!cur || !fits(cur, it)) cur = fresh();
-            put(cur, it);
-          }
-        }
-      } else {
-        const sorted = g.items.slice().sort((a, b) => b.length - a.length);
-        for (const it of sorted) {
+    return items;
+  }
+
+  /** Packs same-width pieces end to end into lengths of `usable` (after `trim`). Returns the filled lengths. */
+  function packLength(items, usable, trim, grain) {
+    const lanes = [];
+    const fresh = () => { const b = { cuts: [], used: 0, over: false }; lanes.push(b); return b; };
+    const fits = (b, it) => !b.over && b.used + it.length <= usable + 1e-9;
+    const put = (b, it) => { b.cuts.push(Object.assign({}, it, { start: trim + b.used })); b.used += it.length + it.allow; };
+    const overflow = it => { const b = fresh(); b.over = true; put(b, it); };
+    if (grain) {
+      let cur = null;
+      const frames = [...new Set(items.map(it => it.frame))];
+      for (const f of frames) {
+        const seq = items.filter(it => it.frame === f);
+        const need = seq.reduce((a, it) => a + it.length + it.allow, 0) - (seq.length ? seq[seq.length - 1].allow : 0);
+        if (cur && cur.used + need > usable + 1e-9 && need <= usable + 1e-9) cur = null;
+        for (const it of seq) {
           if (it.length > usable + 1e-9) { overflow(it); continue; }
-          put(boards.find(b => fits(b, it)) || fresh(), it);
+          if (!cur || !fits(cur, it)) cur = fresh();
+          put(cur, it);
         }
       }
-      for (const b of boards) b.remainder = b.over ? 0 : Math.max(0, usable - b.used);
-      g.linear = g.items.reduce((a, it) => a + it.length, 0);
-      g.boardFeet = boards.length * d.T * g.width * L / 144;
+    } else {
+      const sorted = items.slice().sort((a, b) => b.length - a.length);
+      for (const it of sorted) {
+        if (it.length > usable + 1e-9) { overflow(it); continue; }
+        put(lanes.find(b => fits(b, it)) || fresh(), it);
+      }
     }
+    for (const b of lanes) b.remainder = b.over ? 0 : Math.max(0, usable - b.used);
+    return lanes;
+  }
+
+  function byWidth(items) {
+    const groups = [];
+    for (const it of items) {
+      let g = groups.find(x => Math.abs(x.width - it.width) < 1e-6);
+      if (!g) groups.push(g = { width: it.width, items: [] });
+      g.items.push(it);
+    }
+    return groups;
+  }
+
+  function layoutStock(cuts, s, d) {
+    const L = s.stock.length, k = Math.max(0, s.stock.kerf), trim = Math.max(0, s.stock.trim);
+    const usable = L - trim;
+    const groups = byWidth(stockItems(cuts, s)).map(g => {
+      const boards = packLength(g.items, usable, trim, s.stock.grain);
+      const linear = g.items.reduce((a, it) => a + it.length, 0);
+      return { width: g.width, thick: d.T, items: g.items, boards, linear, boardFeet: boards.length * d.T * g.width * L / 144 };
+    });
     const totalBoards = groups.reduce((a, g) => a + g.boards.length, 0);
     const linear = groups.reduce((a, g) => a + g.linear, 0);
     const maxW = Math.max(d.ws, d.wT, d.wB);
     return {
-      groups, boardLength: L, usable, kerf: k, trim, totalBoards, linear,
+      mode: 'strips', groups, boardLength: L, usable, kerf: k, trim, totalBoards, linear,
       waste: totalBoards ? Math.max(0, 1 - linear / (totalBoards * L)) : 0,
       over: groups.some(g => g.boards.some(b => b.over)),
       moldingRule: s.qty * (2 * (d.OW + d.OH) + 8 * maxW),
+    };
+  }
+
+  /* ---------- Boards: ripping strips from wider stock ---------- */
+
+  // Standard surfaced lumber: actual widths, and the thicknesses it comes in.
+  const LUMBER_IN = { widths: [[2, 1.5], [3, 2.5], [4, 3.5], [5, 4.5], [6, 5.5], [8, 7.25], [10, 9.25], [12, 11.25]],
+    thick: [[0.75, '1×'], [1, '5/4×'], [1.5, '2×']] };
+  const LUMBER_MM = { widths: [44, 69, 94, 119, 144, 169, 194, 219], thick: [18, 25, 32, 44] };
+
+  /** The standard boards that are at least `T` thick (the thinnest such thickness), as {name, w, t}. */
+  function lumberOptions(T, units) {
+    if (units === 'mm') {
+      const t = LUMBER_MM.thick.find(x => x / MM >= T - 1e-6) || LUMBER_MM.thick[LUMBER_MM.thick.length - 1];
+      return LUMBER_MM.widths.map(w => ({ name: `${t} × ${w} mm`, w: w / MM, t: t / MM }));
+    }
+    const t = LUMBER_IN.thick.find(x => x[0] >= T - 1e-6) || LUMBER_IN.thick[LUMBER_IN.thick.length - 1];
+    return LUMBER_IN.widths.map(([nom, w]) => ({ name: `${t[1]}${nom}`, w, t: t[0] }));
+  }
+
+  /** Width taken by strips ripped side by side from one board: each rip after the first costs a kerf. */
+  function ripWidth(widths, k) { return widths.reduce((a, w) => a + w, 0) + Math.max(0, widths.length - 1) * k; }
+
+  /**
+   * Chooses boards from `opts` to rip the strips in `widths` from, using the least total board width
+   * (every board is the same length, so that is the least wood), then the fewest boards.
+   * Exact for the usual case of up to three strip widths; greedy when the search would be large.
+   */
+  function chooseBoards(widths, opts, k) {
+    if (!widths.length) return { boards: [], cost: 0 };
+    const kinds = [...new Set(widths.map(w => +w.toFixed(6)))].sort((a, b) => b - a);
+    const need = kinds.map(w => widths.filter(x => Math.abs(x - w) < 1e-6).length);
+    if (kinds[0] > opts[opts.length - 1].w + 1e-9) return null;
+    const patterns = [];
+    for (const o of opts) {
+      const rec = (i, cnt) => {
+        if (i === kinds.length) {
+          if (cnt.some(c => c > 0)) patterns.push({ o, cnt: cnt.slice() });
+          return;
+        }
+        for (let c = 0; c <= need[i]; c++) {
+          cnt[i] = c;
+          const list = [];
+          cnt.forEach((n, j) => { for (let m = 0; m < n && j <= i; m++) list.push(kinds[j]); });
+          if (ripWidth(list, k) > o.w + 1e-9) break;
+          rec(i + 1, cnt);
+        }
+        cnt[i] = 0;
+      };
+      rec(0, kinds.map(() => 0));
+    }
+    const space = need.reduce((a, n) => a * (n + 1), 1);
+    const pick = (cnt, o) => { const out = []; cnt.forEach((n, j) => { for (let m = 0; m < n; m++) out.push(kinds[j]); }); return { opt: o, strips: out }; };
+    if (space * patterns.length <= 400000) {
+      const memo = new Map();
+      const best = rem => {
+        if (rem.every(n => n === 0)) return { cost: 0, list: [] };
+        const key = rem.join(',');
+        if (memo.has(key)) return memo.get(key);
+        let res = { cost: Infinity, list: null };
+        for (const p of patterns) {
+          if (p.cnt.some((c, j) => c > rem[j])) continue;
+          // Only fill the first remaining kind's strips here, so each set of boards is counted once.
+          const first = rem.findIndex(n => n > 0);
+          if (p.cnt[first] === 0) continue;
+          const sub = best(rem.map((n, j) => n - p.cnt[j]));
+          const cost = sub.cost + p.o.w + 0.001;
+          if (cost < res.cost - 1e-9) res = { cost, list: [p].concat(sub.list) };
+        }
+        memo.set(key, res);
+        return res;
+      };
+      const r = best(need);
+      if (!r.list) return null;
+      return { boards: r.list.map(p => pick(p.cnt, p.o)), cost: r.cost };
+    }
+    // Greedy: each board is the pattern that uses the largest share of its width, widest strips first.
+    const rem = need.slice(), boards = [];
+    let cost = 0;
+    while (rem.some(n => n > 0)) {
+      let bestP = null, bestU = -1;
+      for (const p of patterns) {
+        if (p.cnt.some((c, j) => c > rem[j])) continue;
+        const used = p.cnt.reduce((a, c, j) => a + c * kinds[j], 0);
+        const u = used / p.o.w + used * 1e-4;
+        if (u > bestU) { bestU = u; bestP = p; }
+      }
+      if (!bestP) return null;
+      bestP.cnt.forEach((c, j) => { rem[j] -= c; });
+      boards.push(pick(bestP.cnt, bestP.o));
+      cost += bestP.o.w;
+    }
+    return { boards, cost };
+  }
+
+  /** Puts filled strips onto chosen boards, matching each strip's width. */
+  function assignStrips(choice, lanes, L, k) {
+    const pool = lanes.slice();
+    return choice.boards.map(b => {
+      const strips = b.strips.map(w => {
+        const i = pool.findIndex(l => Math.abs(l.width - w) < 1e-6);
+        return pool.splice(i, 1)[0];
+      });
+      return { src: 'buy', name: b.opt.name, w: b.opt.w, t: b.opt.t, l: L, lanes: strips, ripLeft: Math.max(0, b.opt.w - ripWidth(b.strips, k)) };
+    });
+  }
+
+  /** The cheapest set of standard boards of length `L` for these pieces, plus single-size alternatives. */
+  function planBuy(items, s, d, L) {
+    const k = Math.max(0, s.stock.kerf), trim = Math.max(0, s.stock.trim), usable = L - trim;
+    const lanes = [];
+    for (const g of byWidth(items)) for (const ln of packLength(g.items, usable, trim, s.stock.grain)) lanes.push(Object.assign(ln, { width: g.width }));
+    const opts = lumberOptions(d.T, s.units);
+    const parts = items.reduce((a, it) => a + it.length * it.width, 0);
+    const widths = lanes.map(l => l.width);
+    const summarize = choice => {
+      if (!choice) return null;
+      const area = choice.boards.reduce((a, b) => a + b.opt.w, 0) * L;
+      const counts = [];
+      for (const b of choice.boards) { const c = counts.find(x => x.name === b.opt.name); if (c) c.n++; else counts.push({ name: b.opt.name, w: b.opt.w, t: b.opt.t, n: 1 }); }
+      return { count: choice.boards.length, counts, waste: area ? Math.max(0, 1 - parts / area) : 0, boards: assignStrips(choice, lanes, L, k) };
+    };
+    const best = summarize(chooseBoards(widths, opts, k));
+    const singles = [];
+    for (const o of opts) {
+      const r = summarize(chooseBoards(widths, [o], k));
+      if (r) singles.push(r);
+    }
+    singles.sort((a, b) => a.waste - b.waste || a.count - b.count);
+    return { length: L, thick: opts[0].t, over: lanes.some(l => l.over), best, singles: singles.slice(0, 4) };
+  }
+
+  /** Lays the pieces out on the boards listed (smallest first), then on boards to buy if allowed. */
+  function layoutBoards(cuts, s, d) {
+    const k = Math.max(0, s.stock.kerf), trim = Math.max(0, s.stock.trim);
+    let pool = stockItems(cuts, s);
+    const parts = pool.reduce((a, it) => a + it.length * it.width, 0);
+    const have = [], thin = [];
+    s.stock.boards.forEach((b, bi) => { for (let i = 0; i < b.n; i++) (b.t < d.T - 1e-6 ? thin : have).push({ b, bi, i }); });
+    have.sort((x, y) => x.b.w * x.b.l - y.b.w * y.b.l);
+    const boards = [];
+    for (const h of have) {
+      const { w: B, l } = h.b, usable = l - trim;
+      const lanes = [];
+      let left = B;
+      for (;;) {
+        let best = null;
+        for (const g of byWidth(pool)) {
+          if (g.width + (lanes.length ? k : 0) > left + 1e-9) continue;
+          const lane = packLength(g.items, usable, trim, s.stock.grain).filter(x => !x.over).sort((a, b) => b.used - a.used)[0];
+          if (!lane) continue;
+          const score = lane.cuts.reduce((a, c) => a + c.length, 0) * g.width;
+          if (!best || score > best.score) best = { score, lane: Object.assign(lane, { width: g.width }) };
+        }
+        if (!best) break;
+        const used = new Set(best.lane.cuts.map(c => c.frame + ':' + c.seq));
+        pool = pool.filter(it => !used.has(it.frame + ':' + it.seq));
+        left -= best.lane.width + (lanes.length ? k : 0);
+        lanes.push(best.lane);
+      }
+      if (lanes.length) boards.push({ src: 'have', name: `Board ${h.bi + 1}${h.b.n > 1 ? String.fromCharCode(97 + h.i) : ''}`, w: B, t: h.b.t, l, lanes, ripLeft: Math.max(0, left) });
+    }
+    let buy = null;
+    if (pool.length && s.stock.buy) {
+      buy = planBuy(pool, s, d, s.stock.length);
+      if (buy.best) { boards.push(...buy.best.boards); pool = []; }
+    }
+    const area = boards.reduce((a, b) => a + b.w * b.l, 0);
+    return {
+      mode: 'boards', boards, unplaced: pool, thin: thin.length, kerf: k, trim, boardLength: s.stock.length,
+      totalBoards: boards.length, buyCount: boards.filter(b => b.src === 'buy').length,
+      over: !!(buy && buy.over), waste: area ? Math.max(0, 1 - parts / area) : 0, buy,
     };
   }
 
@@ -1361,8 +1612,20 @@ footer p { margin: 0; max-width: 80ch; }
     buildSteps(s, d, p, F, out);
     for (const r of out.rows) r.qtyTotal = r.qty * s.qty;
     out.cuts = frameCuts(out.rows);
-    out.layout = layoutStock(out.cuts, s, d);
-    if (out.layout.over) out.warnings.push({ level: 'warn', text: `Some pieces are longer than your ${F.L(s.stock.length)} boards. Use longer stock or split the frame.` });
+    const src = s.stock.source;
+    out.layout = src === 'boards' ? layoutBoards(out.cuts, s, d) : layoutStock(out.cuts, s, d);
+    const lay = out.layout;
+    if (lay.over) out.warnings.push({ level: 'warn', text: `Some pieces are longer than ${src === 'molding' ? 'your' : 'the'} ${F.L(s.stock.length)} ${src === 'molding' ? 'molding' : 'boards'}. Use longer stock or split the frame.` });
+    if (src === 'boards') {
+      if (lay.thin) out.warnings.push({ level: 'warn', text: `${plural(lay.thin, 'board')} on your list ${lay.thin === 1 ? 'is' : 'are'} thinner than the ${F.L(d.T)} frame stock and ${lay.thin === 1 ? 'was' : 'were'} left out.` });
+      if (lay.unplaced.length) out.warnings.push({ level: 'warn', text: s.stock.buy
+        ? `${plural(lay.unplaced.length, 'piece')} won't fit on any standard board. Glue up wider stock for ${lay.unplaced.length === 1 ? 'it' : 'them'}.`
+        : `${plural(lay.unplaced.length, 'piece')} don't fit on your boards: ${lay.unplaced.map(it => `${it.label.toLowerCase()} ${F.L(it.length)}`).join(', ')}. Add boards or let it buy more.` });
+      if (s.stock.boards.some(b => b.t > d.T + 1e-6)) out.notes = [`Plane the thicker boards down to ${F.L(d.T)}.`];
+    }
+    if (src === 'molding' && !['miter', 'miterspline'].includes(s.joint)) out.warnings.push({ level: 'warn', text: 'Molding is normally mitered: its profile won\'t meet cleanly with this joint.' });
+    // The cheapest set of standard boards for the whole job, when the frame is cut from boards or strips.
+    out.suggest = s.stock.suggest && src !== 'molding' ? planBuy(stockItems(out.cuts, s), s, d, s.stock.length) : null;
     out.ok = !out.warnings.some(w => w.level === 'error');
     return out;
   }
@@ -1370,6 +1633,7 @@ footer p { margin: 0; max-width: 80ch; }
   return {
     MM, DEG, JOINTS, JOINT_BY_ID, BISCUITS, DOMINOS,
     defaultState, normalizeState, compute, solve, resolveParams,
+    lumberOptions, chooseBoards, planBuy, ripWidth,
     fmtLen, fmtAngle, parseLen, makeFmt, nice,
     fastenerPlan, bandFor, spread,
   };
@@ -2312,10 +2576,61 @@ footer p { margin: 0; max-width: 80ch; }
       sel.dataset.sig = s.units;
     }
     sel.value = String(s.units === 'mm' ? s.precMm : s.precIn);
+    renderStockForm();
     const j = R.joint;
     $('#through-field').hidden = !j.through;
     $('#lbl-through').textContent = THROUGH_LABEL[s.joint] || 'Runs through';
     $('#lg-joint').textContent = `${j.name}`;
+  }
+
+  const SOURCE_HELP = {
+    strips: 'Your stock is already ripped to the frame widths; pieces are cut end to end along it.',
+    boards: 'List the boards you have. Strips are ripped from their width (a kerf per rip) and the pieces cut along them.',
+    molding: 'Ready-made molding: its width, thickness and rabbet set the frame, the same all round.',
+  };
+  const BOARD_KEYS = ['w', 't', 'l'];
+  function renderStockForm() {
+    const s = state, src = s.stock.source, mold = src === 'molding';
+    $('#source-help').textContent = SOURCE_HELP[src];
+    $('#molding-fields').style.display = mold ? 'grid' : 'none';
+    $('#boards-fields').style.display = src === 'boards' ? 'grid' : 'none';
+    $('#suggest-check').hidden = mold;
+    $('#lbl-trim').textContent = mold ? 'End trim per length' : 'End trim per board';
+    $('#lbl-board').textContent = mold ? 'Molding length' : src === 'boards' ? 'Length of boards to buy' : 'Board length';
+    // With molding, its profile (set under Stock and cutting) fixes the widths, thickness and rabbet.
+    for (const id of ['f-stile', 'f-top', 'f-bottom', 'f-thick', 'f-rabw', 'f-rabd']) {
+      const el = $('#' + id);
+      el.disabled = mold;
+      el.closest('.field').classList.toggle('locked', mold);
+      el.title = mold ? 'Set by the molding profile under Stock and cutting' : '';
+    }
+    if (mold) $('#f-link').disabled = true;
+    const wb = $('[data-seg="solve"] button[data-val="widths"]');
+    wb.disabled = mold;
+    wb.title = mold ? 'The molding sets the widths' : '';
+    const rows = $('#board-rows'), list = s.stock.boards;
+    const sig = list.length + '|' + s.units;
+    if (rows.dataset.sig !== sig) {
+      rows.innerHTML = list.map((b, i) => `<div class="board-row">${BOARD_KEYS.map(k =>
+        `<span class="inp"><input data-board="${i}" data-bk="${k}" aria-label="Board ${i + 1} ${({ w: 'width', t: 'thickness', l: 'length' })[k]}" spellcheck="false"></span>`).join('')}` +
+        `<span class="inp"><input data-board="${i}" data-bk="n" aria-label="Board ${i + 1} quantity" inputmode="numeric" spellcheck="false"></span>` +
+        `<button type="button" class="del" data-del-board="${i}" aria-label="Remove board ${i + 1}">×</button></div>`).join('');
+      rows.dataset.sig = sig;
+    }
+    for (const el of $$('#board-rows input')) {
+      if (document.activeElement === el || el.closest('.inp').classList.contains('bad')) continue;
+      const b = list[+el.dataset.board], k = el.dataset.bk;
+      el.value = k === 'n' ? String(b.n) : Lplain(b[k]);
+      if (k !== 'n') el.setAttribute('inputmode', s.units === 'mm' ? 'decimal' : 'text');
+    }
+  }
+  function commitBoard(t) {
+    const i = +t.dataset.board, k = t.dataset.bk;
+    const v = k === 'n' ? parseInt(t.value, 10) : parse(t.value);
+    const okv = k === 'n' ? v >= 1 && v <= 99 : isFinite(v) && v > 0;
+    t.closest('.inp').classList.toggle('bad', !okv);
+    t.title = okv ? '' : k === 'n' ? 'Enter a whole number from 1 to 99.' : `Can't read "${t.value}".`;
+    if (okv) update(s => { s.stock.boards[i][k] = v; });
   }
 
   function markBad(t, msg) {
@@ -2369,12 +2684,24 @@ footer p { margin: 0; max-width: 80ch; }
       if (t.id === 'f-prec') return update(s => { if (s.units === 'mm') s.precMm = +t.value; else s.precIn = t.value === 'dec' ? 'dec' : +t.value; });
       if (t.dataset.path) return commitPath(t);
       if (t.dataset.jp) return commitJp(t);
+      if (t.dataset.board) return commitBoard(t);
     });
     form.addEventListener('keydown', e => {
       if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') { e.preventDefault(); e.target.blur(); }
     });
     form.addEventListener('focusin', e => { if (e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') e.target.select(); });
     form.addEventListener('click', e => {
+      if (e.target.closest('#add-board')) {
+        e.preventDefault();
+        // Start from the last board listed, or a common board: 1x4 at 8 ft, or 18 x 94 mm at 2.4 m.
+        const last = state.stock.boards[state.stock.boards.length - 1];
+        const mm = state.units === 'mm';
+        update(s => { s.stock.boards.push(last ? Object.assign({}, last) : { w: mm ? 94 / C.MM : 3.5, t: Math.max(s.thickness, mm ? 18 / C.MM : 0.75), l: mm ? 2400 / C.MM : 96, n: 1 }); });
+        requestAnimationFrame(() => { const ins = $$('#board-rows input[data-bk="w"]'); if (ins.length) ins[ins.length - 1].focus(); });
+        return;
+      }
+      const del = e.target.closest('[data-del-board]');
+      if (del) { e.preventDefault(); const i = +del.dataset.delBoard; update(s => { s.stock.boards.splice(i, 1); }); return; }
       const r = e.target.closest('[data-reset]');
       if (r) { e.preventDefault(); const k = r.dataset.reset; update(s => { delete s.jp[k]; }); }
     });
@@ -2402,6 +2729,7 @@ footer p { margin: 0; max-width: 80ch; }
         });
       }
       else if (seg === 'through') update(s => { s.through = val; });
+      else if (seg === 'source') update(s => { s.stock.source = val; });
       else if (seg === 'vmode') { view.mode = val; cornerPrep = null; schedule(); }
       else if (seg === 'vangle') { view.angle = val; [view.yaw, view.pitch] = ANGLES[val]; schedule(); }
     });
@@ -2667,7 +2995,7 @@ footer p { margin: 0; max-width: 80ch; }
     $('#cut-sub').textContent = `${R.joint.name} frame${s.qty > 1 ? ` · ${s.qty} frames` : ''}`;
     if (!R.ok) {
       $('#cuts').innerHTML = ''; $('#cut-note').textContent = ''; $('#cards').innerHTML = ''; $('#mats').innerHTML = '';
-      $('#layout').innerHTML = ''; $('#stock-sum').textContent = ''; $('#stock-sub').textContent = ''; $('#steps-list').innerHTML = '';
+      $('#layout').innerHTML = ''; $('#suggest').hidden = true; $('#stock-sum').textContent = ''; $('#stock-sub').textContent = ''; $('#steps-list').innerHTML = '';
       return;
     }
     const hasShort = R.rows.some(r => r.short != null), hasRab = R.rows.some(r => r.atRabbet != null), hasSh = R.rows.some(r => r.shoulder != null);
@@ -2698,15 +3026,108 @@ footer p { margin: 0; max-width: 80ch; }
     $('#steps-list').innerHTML = R.steps.map(x => `<li>${fr(x)}</li>`).join('');
   }
 
+  const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  /** "Two 1×4s and one 1×6" */
+  function boardCounts(counts) {
+    const parts = counts.map(c => `${WORDS[c.n] || c.n} ${c.name}${c.n === 1 ? '' : 's'}`);
+    const t = parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  function boardsText(counts, L) {
+    const t = boardCounts(counts);
+    return t.charAt(0).toLowerCase() + t.slice(1) + ` at ${Lplain(L)}`;
+  }
+  function renderSuggest() {
+    const sg = R.suggest, box = $('#suggest');
+    box.hidden = !sg;
+    if (!sg) return;
+    if (!sg.best) {
+      box.innerHTML = `<h3>Boards to buy</h3><p class="meta">${fr(`No standard board is wide enough for a ${L(Math.max(R.dims.ws, R.dims.wT, R.dims.wB))} strip. Glue up wider stock.`)}</p>`;
+      return;
+    }
+    const b = sg.best, mm = state.units === 'mm';
+    const lenTxt = mm ? L(sg.length) : sg.length % 12 === 0 ? `${sg.length / 12} ft` : L(sg.length);
+    const own = state.stock.source === 'boards';
+    let h = `<h3>${own ? 'If you bought every board new' : 'Boards to buy: least waste'}</h3>`;
+    h += `<p class="best"><b>${fr(boardCounts(b.counts))}</b>, ${fr(lenTxt)} long, ${fr(L(sg.thick))} thick</p>`;
+    h += `<p class="meta">${fr(`${plural(b.count, 'board')}, ${Math.round(b.waste * 100)}% waste. Rip: ${b.boards.map(x => `${x.name} → ${x.lanes.map(l => L(l.width)).join(' + ')}`).join('; ')}.`)}</p>`;
+    const alts = sg.singles.filter(x => !(x.counts.length === 1 && b.counts.length === 1 && x.counts[0].name === b.counts[0].name && x.count === b.count));
+    if (alts.length) {
+      h += '<table><thead><tr><th>All one size</th><th>Boards</th><th>Waste</th></tr></thead><tbody>' +
+        alts.map(a => `<tr><td>${esc(a.counts[0].name)}</td><td class="n">${a.count}</td><td class="n">${Math.round(a.waste * 100)}%</td></tr>`).join('') + '</tbody></table>';
+    }
+    if (!own) h += `<button type="button" class="btn" id="use-suggest">Lay out on these boards</button>`;
+    box.innerHTML = h;
+  }
+  function useSuggest() {
+    const n = state.stock.boards.length;
+    if (n && !confirm(`Replace the ${n === 1 ? 'board' : `${n} boards`} on your list with the suggested ones?`)) return;
+    update(s => { s.stock.source = 'boards'; s.stock.boards = []; s.stock.buy = true; });
+    toast('Laid out on the suggested boards');
+  }
+
+  function renderBoardsLayout() {
+    const lay = R.layout, box = $('#layout');
+    const W = Math.max(280, box.clientWidth || 600);
+    const maxL = Math.max(...lay.boards.map(b => b.l), 1), k = (W - 2) / maxL;
+    const minLane = Math.min(...lay.boards.flatMap(b => b.lanes.map(l => l.width)), 99);
+    const vs = Math.min(40, Math.max(8, 24 / minLane));
+    const have = lay.totalBoards - lay.buyCount;
+    $('#stock-sub').textContent = `${plural(lay.totalBoards, 'board')}${lay.buyCount && have ? `, ${lay.buyCount} to buy` : lay.buyCount ? ' to buy' : ''}`;
+    let sum = lay.totalBoards ? `${have ? `${have} of your boards used` : ''}${have && lay.buyCount ? '; ' : ''}${lay.buyCount ? `buy ${boardsText(countBoards(lay.boards.filter(b => b.src === 'buy')), lay.boardLength)}` : ''}. ${Math.round(lay.waste * 100)}% of the wood is left over.` : 'Add boards, or let it buy them.';
+    if (R.notes) sum += ' ' + R.notes.join(' ');
+    $('#stock-sum').innerHTML = fr(sum);
+    box.innerHTML = lay.boards.map((b, bi) => {
+      const H = Math.round(b.w * vs), bw = b.l * k;
+      let svg = `<svg class="board-svg" width="${W}" height="${H + 2}" viewBox="0 0 ${W} ${H + 2}" role="img" aria-label="${esc(`${b.name}: ${b.lanes.length} strips`)}">`;
+      svg += `<defs><pattern id="bhatch${bi}" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="var(--panel)"/><rect width="2" height="7" fill="var(--line)"/></pattern></defs>`;
+      svg += `<rect class="stock" x="0" y="1" width="${bw.toFixed(1)}" height="${H}" rx="2" fill="url(#bhatch${bi})"/>`;
+      let y = 1;
+      b.lanes.forEach((ln, li) => {
+        if (li) y += lay.kerf * vs;
+        const h = ln.width * vs;
+        svg += `<rect class="stock" x="0" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"/>`;
+        if (lay.trim > 0) svg += `<rect x="0" y="${y.toFixed(1)}" width="${(lay.trim * k).toFixed(1)}" height="${h.toFixed(1)}" fill="url(#bhatch${bi})"/>`;
+        for (const c of ln.cuts) {
+          const x0 = c.start * k, x1 = (c.start + c.length) * k;
+          const i0 = Math.min(h, Math.tan(c.angles[0] / C.DEG) * c.width * k), i1 = Math.min(h, Math.tan(c.angles[1] / C.DEG) * c.width * k);
+          const cls = c.label === 'Side' ? 'piece alt' : 'piece';
+          svg += `<polygon class="${cls}" points="${x0.toFixed(1)},${y.toFixed(1)} ${x1.toFixed(1)},${y.toFixed(1)} ${(x1 - i1).toFixed(1)},${(y + h).toFixed(1)} ${(x0 + i0).toFixed(1)},${(y + h).toFixed(1)}"><title>${esc(`${c.label}, ${L(c.length)} × ${L(c.width)}`)}</title></polygon>`;
+          const label = `${c.label} ${Lplain(c.length)}`, short = Lplain(c.length);
+          const room = (x1 - x0) - Math.max(i0, i1);
+          const text = h < 13 ? '' : room > label.length * 6.9 + 8 ? label : room > short.length * 6.9 + 6 ? short : '';
+          if (text) svg += `<text class="pl${c.label === 'Side' ? ' on-dark' : ''}" x="${((x0 + x1) / 2).toFixed(1)}" y="${(y + h / 2 + 4).toFixed(1)}" text-anchor="middle">${esc(text)}</text>`;
+        }
+        if (ln.remainder > 0.01 && h >= 13) {
+          const xo = (lay.trim + ln.used) * k, wo = ln.remainder * k, ot = `offcut ${Lplain(ln.remainder)}`;
+          if (wo > ot.length * 6.9 + 8) svg += `<text class="ol" x="${(xo + wo / 2).toFixed(1)}" y="${(y + h / 2 + 4).toFixed(1)}" text-anchor="middle">${esc(ot)}</text>`;
+        }
+        y += h;
+      });
+      svg += '</svg>';
+      const strips = b.lanes.map(l => L(l.width)).join(' + ');
+      const tag = b.src === 'buy' ? '<span class="tag-buy">Buy</span>' : '';
+      return `<div class="lgroup"><h3>${fr(`${b.name}: ${L(b.w)} × ${L(b.t)} × ${L(b.l)}`)}${tag}</h3><p class="meta">${fr(`Rip ${strips}${b.ripLeft > 0.05 ? `, leaving ${L(b.ripLeft)}` : ''}`)}</p>${svg}</div>`;
+    }).join('');
+  }
+  function countBoards(list) {
+    const out = [];
+    for (const b of list) { const c = out.find(x => x.name === b.name); if (c) c.n++; else out.push({ name: b.name, n: 1 }); }
+    return out;
+  }
+
   function renderLayout() {
+    renderSuggest();
+    if (R.layout.mode === 'boards') return renderBoardsLayout();
     const lay = R.layout, box = $('#layout');
     const W = Math.max(280, box.clientWidth || 600);
     const labelW = 62, barW = W - labelW - 2, k = barW / lay.boardLength;
     const rowH = 30, gap = 12;
     const s = state;
-    $('#stock-sub').textContent = `${plural(lay.totalBoards, 'board')} of ${L(lay.boardLength)}`;
-    let sum = `${plural(lay.totalBoards, 'board')}, ${Math.round(lay.waste * 100)}% left over as offcuts and kerf.`;
-    if (s.joint === 'miter' || s.joint === 'miterspline') sum += ` Buying molding? The usual rule of thumb is the perimeter plus 8 × the width: ${s.units === 'mm' ? L(lay.moldingRule) : `${(lay.moldingRule / 12).toFixed(1)} ft`}.`;
+    const unit = s.stock.source === 'molding' ? 'length' : 'board';
+    $('#stock-sub').textContent = `${plural(lay.totalBoards, unit)} of ${L(lay.boardLength)}`;
+    let sum = `${plural(lay.totalBoards, unit)}, ${Math.round(lay.waste * 100)}% left over as offcuts and kerf.`;
+    if (s.stock.source === 'molding' && (s.joint === 'miter' || s.joint === 'miterspline')) sum += ` Buying molding? The usual rule of thumb is the perimeter plus 8 × the width: ${s.units === 'mm' ? L(lay.moldingRule) : `${(lay.moldingRule / 12).toFixed(1)} ft`}.`;
     $('#stock-sum').innerHTML = fr(sum);
     box.innerHTML = lay.groups.map((g, gi) => {
       const h = g.boards.length * (rowH + gap) + 2;
@@ -2816,6 +3237,7 @@ footer p { margin: 0; max-width: 80ch; }
         renderDesigns();
       }
     });
+    $('#suggest').addEventListener('click', e => { if (e.target.closest('#use-suggest')) useSuggest(); });
     $('#btn-copy').addEventListener('click', () => { if (R.ok) copyText(cutListText(), 'Cut list copied'); });
     if (!inFrame) {
       const link = $('#btn-link');
@@ -2845,7 +3267,7 @@ footer p { margin: 0; max-width: 80ch; }
   /* ---------- Render loop ---------- */
 
   function renderAll() {
-    setSeg('units', state.units); setSeg('solve', state.solve); setSeg('innerRef', state.innerRef); setSeg('through', state.through);
+    setSeg('units', state.units); setSeg('solve', state.solve); setSeg('innerRef', state.innerRef); setSeg('through', state.through); setSeg('source', state.stock.source);
     setSeg('vmode', view.mode); setSeg('vangle', view.angle);
     for (const b of $$('#joints .jcard')) b.setAttribute('aria-pressed', String(b.dataset.joint === state.joint));
     $('#joint-blurb').textContent = R.joint.blurb;

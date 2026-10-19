@@ -63,7 +63,9 @@
       mat: { on: false, side: 2, top: 2, bottom: 2.5, overlap: 0.125 },
       through: 'stiles',
       jp: {},                    // per-joint overrides; missing means automatic
-      stock: { length: 96, kerf: 0.125, trim: 0, grain: true },
+      // source: 'strips' = stock already at frame width, 'boards' = rip from the boards listed,
+      // 'molding' = ready-made molding whose profile sets the widths, thickness and rabbet.
+      stock: { length: 96, kerf: 0.125, trim: 0, grain: true, source: 'strips', boards: [], buy: true, suggest: true },
       qty: 1,
     };
   }
@@ -97,6 +99,17 @@
     for (const k of ['w', 'h']) { s.inner[k] = num(s.inner[k], def.inner[k]); s.outside[k] = num(s.outside[k], 0); }
     s.qty = Math.max(1, Math.min(99, Math.round(num(s.qty, 1))));
     s.stock.length = Math.max(1, num(s.stock.length, 96));
+    if (!['strips', 'boards', 'molding'].includes(s.stock.source)) s.stock.source = 'strips';
+    s.stock.boards = (Array.isArray(s.stock.boards) ? s.stock.boards : []).slice(0, 50).map(b => ({
+      w: Math.max(0.01, num(b && b.w, 3.5)), t: Math.max(0.01, num(b && b.t, 0.75)), l: Math.max(0.1, num(b && b.l, 96)),
+      n: Math.max(1, Math.min(99, Math.round(num(b && b.n, 1)))),
+    }));
+    for (const k of ['buy', 'suggest', 'grain']) s.stock[k] = s.stock[k] !== false;
+    if (s.stock.source === 'molding') {
+      // A molding profile is the same all round, so the widths can't be the calculated quantity.
+      s.linkWidths = true;
+      if (s.solve === 'widths') s.solve = 'outside';
+    }
     if (s.solve === 'widths') s.linkWidths = false;
     if (s.linkWidths) s.top = s.bottom = s.stile;
     return s;
@@ -745,56 +758,246 @@
     return [c('Top', top), c('Side', st), c('Bottom', bot), c('Side', st, true)];
   }
 
-  function layoutStock(cuts, s, d) {
-    const L = s.stock.length, k = Math.max(0, s.stock.kerf), trim = Math.max(0, s.stock.trim);
-    const usable = L - trim;
-    const groups = [];
+  function stockItems(cuts, s) {
+    const k = Math.max(0, s.stock.kerf), items = [];
     for (let f = 0; f < s.qty; f++) {
       cuts.forEach((c, i) => {
         const a = Math.min(60, Math.max(...c.angles.map(Math.abs)));
-        const it = Object.assign({}, c, { frame: f, seq: i, allow: k / Math.cos(a / DEG) });
-        let g = groups.find(x => Math.abs(x.width - it.width) < 1e-6);
-        if (!g) groups.push(g = { width: it.width, thick: d.T, items: [], boards: [] });
-        g.items.push(it);
+        items.push(Object.assign({}, c, { frame: f, seq: i, allow: k / Math.cos(a / DEG) }));
       });
     }
-    for (const g of groups) {
-      const boards = g.boards;
-      const fresh = () => { const b = { cuts: [], used: 0, over: false }; boards.push(b); return b; };
-      const fits = (b, it) => !b.over && b.used + it.length <= usable + 1e-9;
-      const put = (b, it) => { b.cuts.push(Object.assign({}, it, { start: trim + b.used })); b.used += it.length + it.allow; };
-      const overflow = it => { const b = fresh(); b.over = true; put(b, it); };
-      if (s.stock.grain) {
-        let cur = null;
-        for (let f = 0; f < s.qty; f++) {
-          const seq = g.items.filter(it => it.frame === f);
-          const need = seq.reduce((a, it) => a + it.length + it.allow, 0) - (seq.length ? seq[seq.length - 1].allow : 0);
-          if (cur && cur.used + need > usable + 1e-9 && need <= usable + 1e-9) cur = null;
-          for (const it of seq) {
-            if (it.length > usable + 1e-9) { overflow(it); continue; }
-            if (!cur || !fits(cur, it)) cur = fresh();
-            put(cur, it);
-          }
-        }
-      } else {
-        const sorted = g.items.slice().sort((a, b) => b.length - a.length);
-        for (const it of sorted) {
+    return items;
+  }
+
+  /** Packs same-width pieces end to end into lengths of `usable` (after `trim`). Returns the filled lengths. */
+  function packLength(items, usable, trim, grain) {
+    const lanes = [];
+    const fresh = () => { const b = { cuts: [], used: 0, over: false }; lanes.push(b); return b; };
+    const fits = (b, it) => !b.over && b.used + it.length <= usable + 1e-9;
+    const put = (b, it) => { b.cuts.push(Object.assign({}, it, { start: trim + b.used })); b.used += it.length + it.allow; };
+    const overflow = it => { const b = fresh(); b.over = true; put(b, it); };
+    if (grain) {
+      let cur = null;
+      const frames = [...new Set(items.map(it => it.frame))];
+      for (const f of frames) {
+        const seq = items.filter(it => it.frame === f);
+        const need = seq.reduce((a, it) => a + it.length + it.allow, 0) - (seq.length ? seq[seq.length - 1].allow : 0);
+        if (cur && cur.used + need > usable + 1e-9 && need <= usable + 1e-9) cur = null;
+        for (const it of seq) {
           if (it.length > usable + 1e-9) { overflow(it); continue; }
-          put(boards.find(b => fits(b, it)) || fresh(), it);
+          if (!cur || !fits(cur, it)) cur = fresh();
+          put(cur, it);
         }
       }
-      for (const b of boards) b.remainder = b.over ? 0 : Math.max(0, usable - b.used);
-      g.linear = g.items.reduce((a, it) => a + it.length, 0);
-      g.boardFeet = boards.length * d.T * g.width * L / 144;
+    } else {
+      const sorted = items.slice().sort((a, b) => b.length - a.length);
+      for (const it of sorted) {
+        if (it.length > usable + 1e-9) { overflow(it); continue; }
+        put(lanes.find(b => fits(b, it)) || fresh(), it);
+      }
     }
+    for (const b of lanes) b.remainder = b.over ? 0 : Math.max(0, usable - b.used);
+    return lanes;
+  }
+
+  function byWidth(items) {
+    const groups = [];
+    for (const it of items) {
+      let g = groups.find(x => Math.abs(x.width - it.width) < 1e-6);
+      if (!g) groups.push(g = { width: it.width, items: [] });
+      g.items.push(it);
+    }
+    return groups;
+  }
+
+  function layoutStock(cuts, s, d) {
+    const L = s.stock.length, k = Math.max(0, s.stock.kerf), trim = Math.max(0, s.stock.trim);
+    const usable = L - trim;
+    const groups = byWidth(stockItems(cuts, s)).map(g => {
+      const boards = packLength(g.items, usable, trim, s.stock.grain);
+      const linear = g.items.reduce((a, it) => a + it.length, 0);
+      return { width: g.width, thick: d.T, items: g.items, boards, linear, boardFeet: boards.length * d.T * g.width * L / 144 };
+    });
     const totalBoards = groups.reduce((a, g) => a + g.boards.length, 0);
     const linear = groups.reduce((a, g) => a + g.linear, 0);
     const maxW = Math.max(d.ws, d.wT, d.wB);
     return {
-      groups, boardLength: L, usable, kerf: k, trim, totalBoards, linear,
+      mode: 'strips', groups, boardLength: L, usable, kerf: k, trim, totalBoards, linear,
       waste: totalBoards ? Math.max(0, 1 - linear / (totalBoards * L)) : 0,
       over: groups.some(g => g.boards.some(b => b.over)),
       moldingRule: s.qty * (2 * (d.OW + d.OH) + 8 * maxW),
+    };
+  }
+
+  /* ---------- Boards: ripping strips from wider stock ---------- */
+
+  // Standard surfaced lumber: actual widths, and the thicknesses it comes in.
+  const LUMBER_IN = { widths: [[2, 1.5], [3, 2.5], [4, 3.5], [5, 4.5], [6, 5.5], [8, 7.25], [10, 9.25], [12, 11.25]],
+    thick: [[0.75, '1×'], [1, '5/4×'], [1.5, '2×']] };
+  const LUMBER_MM = { widths: [44, 69, 94, 119, 144, 169, 194, 219], thick: [18, 25, 32, 44] };
+
+  /** The standard boards that are at least `T` thick (the thinnest such thickness), as {name, w, t}. */
+  function lumberOptions(T, units) {
+    if (units === 'mm') {
+      const t = LUMBER_MM.thick.find(x => x / MM >= T - 1e-6) || LUMBER_MM.thick[LUMBER_MM.thick.length - 1];
+      return LUMBER_MM.widths.map(w => ({ name: `${t} × ${w} mm`, w: w / MM, t: t / MM }));
+    }
+    const t = LUMBER_IN.thick.find(x => x[0] >= T - 1e-6) || LUMBER_IN.thick[LUMBER_IN.thick.length - 1];
+    return LUMBER_IN.widths.map(([nom, w]) => ({ name: `${t[1]}${nom}`, w, t: t[0] }));
+  }
+
+  /** Width taken by strips ripped side by side from one board: each rip after the first costs a kerf. */
+  function ripWidth(widths, k) { return widths.reduce((a, w) => a + w, 0) + Math.max(0, widths.length - 1) * k; }
+
+  /**
+   * Chooses boards from `opts` to rip the strips in `widths` from, using the least total board width
+   * (every board is the same length, so that is the least wood), then the fewest boards.
+   * Exact for the usual case of up to three strip widths; greedy when the search would be large.
+   */
+  function chooseBoards(widths, opts, k) {
+    if (!widths.length) return { boards: [], cost: 0 };
+    const kinds = [...new Set(widths.map(w => +w.toFixed(6)))].sort((a, b) => b - a);
+    const need = kinds.map(w => widths.filter(x => Math.abs(x - w) < 1e-6).length);
+    if (kinds[0] > opts[opts.length - 1].w + 1e-9) return null;
+    const patterns = [];
+    for (const o of opts) {
+      const rec = (i, cnt) => {
+        if (i === kinds.length) {
+          if (cnt.some(c => c > 0)) patterns.push({ o, cnt: cnt.slice() });
+          return;
+        }
+        for (let c = 0; c <= need[i]; c++) {
+          cnt[i] = c;
+          const list = [];
+          cnt.forEach((n, j) => { for (let m = 0; m < n && j <= i; m++) list.push(kinds[j]); });
+          if (ripWidth(list, k) > o.w + 1e-9) break;
+          rec(i + 1, cnt);
+        }
+        cnt[i] = 0;
+      };
+      rec(0, kinds.map(() => 0));
+    }
+    const space = need.reduce((a, n) => a * (n + 1), 1);
+    const pick = (cnt, o) => { const out = []; cnt.forEach((n, j) => { for (let m = 0; m < n; m++) out.push(kinds[j]); }); return { opt: o, strips: out }; };
+    if (space * patterns.length <= 400000) {
+      const memo = new Map();
+      const best = rem => {
+        if (rem.every(n => n === 0)) return { cost: 0, list: [] };
+        const key = rem.join(',');
+        if (memo.has(key)) return memo.get(key);
+        let res = { cost: Infinity, list: null };
+        for (const p of patterns) {
+          if (p.cnt.some((c, j) => c > rem[j])) continue;
+          // Only fill the first remaining kind's strips here, so each set of boards is counted once.
+          const first = rem.findIndex(n => n > 0);
+          if (p.cnt[first] === 0) continue;
+          const sub = best(rem.map((n, j) => n - p.cnt[j]));
+          const cost = sub.cost + p.o.w + 0.001;
+          if (cost < res.cost - 1e-9) res = { cost, list: [p].concat(sub.list) };
+        }
+        memo.set(key, res);
+        return res;
+      };
+      const r = best(need);
+      if (!r.list) return null;
+      return { boards: r.list.map(p => pick(p.cnt, p.o)), cost: r.cost };
+    }
+    // Greedy: each board is the pattern that uses the largest share of its width, widest strips first.
+    const rem = need.slice(), boards = [];
+    let cost = 0;
+    while (rem.some(n => n > 0)) {
+      let bestP = null, bestU = -1;
+      for (const p of patterns) {
+        if (p.cnt.some((c, j) => c > rem[j])) continue;
+        const used = p.cnt.reduce((a, c, j) => a + c * kinds[j], 0);
+        const u = used / p.o.w + used * 1e-4;
+        if (u > bestU) { bestU = u; bestP = p; }
+      }
+      if (!bestP) return null;
+      bestP.cnt.forEach((c, j) => { rem[j] -= c; });
+      boards.push(pick(bestP.cnt, bestP.o));
+      cost += bestP.o.w;
+    }
+    return { boards, cost };
+  }
+
+  /** Puts filled strips onto chosen boards, matching each strip's width. */
+  function assignStrips(choice, lanes, L, k) {
+    const pool = lanes.slice();
+    return choice.boards.map(b => {
+      const strips = b.strips.map(w => {
+        const i = pool.findIndex(l => Math.abs(l.width - w) < 1e-6);
+        return pool.splice(i, 1)[0];
+      });
+      return { src: 'buy', name: b.opt.name, w: b.opt.w, t: b.opt.t, l: L, lanes: strips, ripLeft: Math.max(0, b.opt.w - ripWidth(b.strips, k)) };
+    });
+  }
+
+  /** The cheapest set of standard boards of length `L` for these pieces, plus single-size alternatives. */
+  function planBuy(items, s, d, L) {
+    const k = Math.max(0, s.stock.kerf), trim = Math.max(0, s.stock.trim), usable = L - trim;
+    const lanes = [];
+    for (const g of byWidth(items)) for (const ln of packLength(g.items, usable, trim, s.stock.grain)) lanes.push(Object.assign(ln, { width: g.width }));
+    const opts = lumberOptions(d.T, s.units);
+    const parts = items.reduce((a, it) => a + it.length * it.width, 0);
+    const widths = lanes.map(l => l.width);
+    const summarize = choice => {
+      if (!choice) return null;
+      const area = choice.boards.reduce((a, b) => a + b.opt.w, 0) * L;
+      const counts = [];
+      for (const b of choice.boards) { const c = counts.find(x => x.name === b.opt.name); if (c) c.n++; else counts.push({ name: b.opt.name, w: b.opt.w, t: b.opt.t, n: 1 }); }
+      return { count: choice.boards.length, counts, waste: area ? Math.max(0, 1 - parts / area) : 0, boards: assignStrips(choice, lanes, L, k) };
+    };
+    const best = summarize(chooseBoards(widths, opts, k));
+    const singles = [];
+    for (const o of opts) {
+      const r = summarize(chooseBoards(widths, [o], k));
+      if (r) singles.push(r);
+    }
+    singles.sort((a, b) => a.waste - b.waste || a.count - b.count);
+    return { length: L, thick: opts[0].t, over: lanes.some(l => l.over), best, singles: singles.slice(0, 4) };
+  }
+
+  /** Lays the pieces out on the boards listed (smallest first), then on boards to buy if allowed. */
+  function layoutBoards(cuts, s, d) {
+    const k = Math.max(0, s.stock.kerf), trim = Math.max(0, s.stock.trim);
+    let pool = stockItems(cuts, s);
+    const parts = pool.reduce((a, it) => a + it.length * it.width, 0);
+    const have = [], thin = [];
+    s.stock.boards.forEach((b, bi) => { for (let i = 0; i < b.n; i++) (b.t < d.T - 1e-6 ? thin : have).push({ b, bi, i }); });
+    have.sort((x, y) => x.b.w * x.b.l - y.b.w * y.b.l);
+    const boards = [];
+    for (const h of have) {
+      const { w: B, l } = h.b, usable = l - trim;
+      const lanes = [];
+      let left = B;
+      for (;;) {
+        let best = null;
+        for (const g of byWidth(pool)) {
+          if (g.width + (lanes.length ? k : 0) > left + 1e-9) continue;
+          const lane = packLength(g.items, usable, trim, s.stock.grain).filter(x => !x.over).sort((a, b) => b.used - a.used)[0];
+          if (!lane) continue;
+          const score = lane.cuts.reduce((a, c) => a + c.length, 0) * g.width;
+          if (!best || score > best.score) best = { score, lane: Object.assign(lane, { width: g.width }) };
+        }
+        if (!best) break;
+        const used = new Set(best.lane.cuts.map(c => c.frame + ':' + c.seq));
+        pool = pool.filter(it => !used.has(it.frame + ':' + it.seq));
+        left -= best.lane.width + (lanes.length ? k : 0);
+        lanes.push(best.lane);
+      }
+      if (lanes.length) boards.push({ src: 'have', name: `Board ${h.bi + 1}${h.b.n > 1 ? String.fromCharCode(97 + h.i) : ''}`, w: B, t: h.b.t, l, lanes, ripLeft: Math.max(0, left) });
+    }
+    let buy = null;
+    if (pool.length && s.stock.buy) {
+      buy = planBuy(pool, s, d, s.stock.length);
+      if (buy.best) { boards.push(...buy.best.boards); pool = []; }
+    }
+    const area = boards.reduce((a, b) => a + b.w * b.l, 0);
+    return {
+      mode: 'boards', boards, unplaced: pool, thin: thin.length, kerf: k, trim, boardLength: s.stock.length,
+      totalBoards: boards.length, buyCount: boards.filter(b => b.src === 'buy').length,
+      over: !!(buy && buy.over), waste: area ? Math.max(0, 1 - parts / area) : 0, buy,
     };
   }
 
@@ -814,8 +1017,20 @@
     buildSteps(s, d, p, F, out);
     for (const r of out.rows) r.qtyTotal = r.qty * s.qty;
     out.cuts = frameCuts(out.rows);
-    out.layout = layoutStock(out.cuts, s, d);
-    if (out.layout.over) out.warnings.push({ level: 'warn', text: `Some pieces are longer than your ${F.L(s.stock.length)} boards. Use longer stock or split the frame.` });
+    const src = s.stock.source;
+    out.layout = src === 'boards' ? layoutBoards(out.cuts, s, d) : layoutStock(out.cuts, s, d);
+    const lay = out.layout;
+    if (lay.over) out.warnings.push({ level: 'warn', text: `Some pieces are longer than ${src === 'molding' ? 'your' : 'the'} ${F.L(s.stock.length)} ${src === 'molding' ? 'molding' : 'boards'}. Use longer stock or split the frame.` });
+    if (src === 'boards') {
+      if (lay.thin) out.warnings.push({ level: 'warn', text: `${plural(lay.thin, 'board')} on your list ${lay.thin === 1 ? 'is' : 'are'} thinner than the ${F.L(d.T)} frame stock and ${lay.thin === 1 ? 'was' : 'were'} left out.` });
+      if (lay.unplaced.length) out.warnings.push({ level: 'warn', text: s.stock.buy
+        ? `${plural(lay.unplaced.length, 'piece')} won't fit on any standard board. Glue up wider stock for ${lay.unplaced.length === 1 ? 'it' : 'them'}.`
+        : `${plural(lay.unplaced.length, 'piece')} don't fit on your boards: ${lay.unplaced.map(it => `${it.label.toLowerCase()} ${F.L(it.length)}`).join(', ')}. Add boards or let it buy more.` });
+      if (s.stock.boards.some(b => b.t > d.T + 1e-6)) out.notes = [`Plane the thicker boards down to ${F.L(d.T)}.`];
+    }
+    if (src === 'molding' && !['miter', 'miterspline'].includes(s.joint)) out.warnings.push({ level: 'warn', text: 'Molding is normally mitered: its profile won\'t meet cleanly with this joint.' });
+    // The cheapest set of standard boards for the whole job, when the frame is cut from boards or strips.
+    out.suggest = s.stock.suggest && src !== 'molding' ? planBuy(stockItems(out.cuts, s), s, d, s.stock.length) : null;
     out.ok = !out.warnings.some(w => w.level === 'error');
     return out;
   }
@@ -823,6 +1038,7 @@
   return {
     MM, DEG, JOINTS, JOINT_BY_ID, BISCUITS, DOMINOS,
     defaultState, normalizeState, compute, solve, resolveParams,
+    lumberOptions, chooseBoards, planBuy, ripWidth,
     fmtLen, fmtAngle, parseLen, makeFmt, nice,
     fastenerPlan, bandFor, spread,
   };

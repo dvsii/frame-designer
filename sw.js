@@ -1,6 +1,6 @@
 /* Frame Designer service worker: lets the installed app open offline.
    Network first, so a deployed update shows up on the next load; the cache is the fallback. */
-const CACHE = 'frame-designer-v1';
+const CACHE = 'frame-designer-v2';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'js/core.js', 'js/geom.js', 'js/render.js', 'js/app.js',
@@ -24,7 +24,8 @@ self.addEventListener('fetch', e => {
   const fonts = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
   if (url.origin !== self.location.origin && !fonts) return;
   e.respondWith(
-    fetch(req).then(res => {
+    // Revalidate with the server so an update shows up at once rather than after the HTTP cache expires.
+    (fonts ? fetch(req) : fetch(req.url, { cache: 'no-cache', credentials: 'same-origin', redirect: req.mode === 'navigate' ? 'manual' : 'follow' })).then(res => {
       if (res.ok || res.type === 'opaque') {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(req, copy));

@@ -218,10 +218,61 @@
       sel.dataset.sig = s.units;
     }
     sel.value = String(s.units === 'mm' ? s.precMm : s.precIn);
+    renderStockForm();
     const j = R.joint;
     $('#through-field').hidden = !j.through;
     $('#lbl-through').textContent = THROUGH_LABEL[s.joint] || 'Runs through';
     $('#lg-joint').textContent = `${j.name}`;
+  }
+
+  const SOURCE_HELP = {
+    strips: 'Your stock is already ripped to the frame widths; pieces are cut end to end along it.',
+    boards: 'List the boards you have. Strips are ripped from their width (a kerf per rip) and the pieces cut along them.',
+    molding: 'Ready-made molding: its width, thickness and rabbet set the frame, the same all round.',
+  };
+  const BOARD_KEYS = ['w', 't', 'l'];
+  function renderStockForm() {
+    const s = state, src = s.stock.source, mold = src === 'molding';
+    $('#source-help').textContent = SOURCE_HELP[src];
+    $('#molding-fields').style.display = mold ? 'grid' : 'none';
+    $('#boards-fields').style.display = src === 'boards' ? 'grid' : 'none';
+    $('#suggest-check').hidden = mold;
+    $('#lbl-trim').textContent = mold ? 'End trim per length' : 'End trim per board';
+    $('#lbl-board').textContent = mold ? 'Molding length' : src === 'boards' ? 'Length of boards to buy' : 'Board length';
+    // With molding, its profile (set under Stock and cutting) fixes the widths, thickness and rabbet.
+    for (const id of ['f-stile', 'f-top', 'f-bottom', 'f-thick', 'f-rabw', 'f-rabd']) {
+      const el = $('#' + id);
+      el.disabled = mold;
+      el.closest('.field').classList.toggle('locked', mold);
+      el.title = mold ? 'Set by the molding profile under Stock and cutting' : '';
+    }
+    if (mold) $('#f-link').disabled = true;
+    const wb = $('[data-seg="solve"] button[data-val="widths"]');
+    wb.disabled = mold;
+    wb.title = mold ? 'The molding sets the widths' : '';
+    const rows = $('#board-rows'), list = s.stock.boards;
+    const sig = list.length + '|' + s.units;
+    if (rows.dataset.sig !== sig) {
+      rows.innerHTML = list.map((b, i) => `<div class="board-row">${BOARD_KEYS.map(k =>
+        `<span class="inp"><input data-board="${i}" data-bk="${k}" aria-label="Board ${i + 1} ${({ w: 'width', t: 'thickness', l: 'length' })[k]}" spellcheck="false"></span>`).join('')}` +
+        `<span class="inp"><input data-board="${i}" data-bk="n" aria-label="Board ${i + 1} quantity" inputmode="numeric" spellcheck="false"></span>` +
+        `<button type="button" class="del" data-del-board="${i}" aria-label="Remove board ${i + 1}">×</button></div>`).join('');
+      rows.dataset.sig = sig;
+    }
+    for (const el of $$('#board-rows input')) {
+      if (document.activeElement === el || el.closest('.inp').classList.contains('bad')) continue;
+      const b = list[+el.dataset.board], k = el.dataset.bk;
+      el.value = k === 'n' ? String(b.n) : Lplain(b[k]);
+      if (k !== 'n') el.setAttribute('inputmode', s.units === 'mm' ? 'decimal' : 'text');
+    }
+  }
+  function commitBoard(t) {
+    const i = +t.dataset.board, k = t.dataset.bk;
+    const v = k === 'n' ? parseInt(t.value, 10) : parse(t.value);
+    const okv = k === 'n' ? v >= 1 && v <= 99 : isFinite(v) && v > 0;
+    t.closest('.inp').classList.toggle('bad', !okv);
+    t.title = okv ? '' : k === 'n' ? 'Enter a whole number from 1 to 99.' : `Can't read "${t.value}".`;
+    if (okv) update(s => { s.stock.boards[i][k] = v; });
   }
 
   function markBad(t, msg) {
@@ -275,12 +326,24 @@
       if (t.id === 'f-prec') return update(s => { if (s.units === 'mm') s.precMm = +t.value; else s.precIn = t.value === 'dec' ? 'dec' : +t.value; });
       if (t.dataset.path) return commitPath(t);
       if (t.dataset.jp) return commitJp(t);
+      if (t.dataset.board) return commitBoard(t);
     });
     form.addEventListener('keydown', e => {
       if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') { e.preventDefault(); e.target.blur(); }
     });
     form.addEventListener('focusin', e => { if (e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') e.target.select(); });
     form.addEventListener('click', e => {
+      if (e.target.closest('#add-board')) {
+        e.preventDefault();
+        // Start from the last board listed, or a common board: 1x4 at 8 ft, or 18 x 94 mm at 2.4 m.
+        const last = state.stock.boards[state.stock.boards.length - 1];
+        const mm = state.units === 'mm';
+        update(s => { s.stock.boards.push(last ? Object.assign({}, last) : { w: mm ? 94 / C.MM : 3.5, t: Math.max(s.thickness, mm ? 18 / C.MM : 0.75), l: mm ? 2400 / C.MM : 96, n: 1 }); });
+        requestAnimationFrame(() => { const ins = $$('#board-rows input[data-bk="w"]'); if (ins.length) ins[ins.length - 1].focus(); });
+        return;
+      }
+      const del = e.target.closest('[data-del-board]');
+      if (del) { e.preventDefault(); const i = +del.dataset.delBoard; update(s => { s.stock.boards.splice(i, 1); }); return; }
       const r = e.target.closest('[data-reset]');
       if (r) { e.preventDefault(); const k = r.dataset.reset; update(s => { delete s.jp[k]; }); }
     });
@@ -308,6 +371,7 @@
         });
       }
       else if (seg === 'through') update(s => { s.through = val; });
+      else if (seg === 'source') update(s => { s.stock.source = val; });
       else if (seg === 'vmode') { view.mode = val; cornerPrep = null; schedule(); }
       else if (seg === 'vangle') { view.angle = val; [view.yaw, view.pitch] = ANGLES[val]; schedule(); }
     });
@@ -573,7 +637,7 @@
     $('#cut-sub').textContent = `${R.joint.name} frame${s.qty > 1 ? ` · ${s.qty} frames` : ''}`;
     if (!R.ok) {
       $('#cuts').innerHTML = ''; $('#cut-note').textContent = ''; $('#cards').innerHTML = ''; $('#mats').innerHTML = '';
-      $('#layout').innerHTML = ''; $('#stock-sum').textContent = ''; $('#stock-sub').textContent = ''; $('#steps-list').innerHTML = '';
+      $('#layout').innerHTML = ''; $('#suggest').hidden = true; $('#stock-sum').textContent = ''; $('#stock-sub').textContent = ''; $('#steps-list').innerHTML = '';
       return;
     }
     const hasShort = R.rows.some(r => r.short != null), hasRab = R.rows.some(r => r.atRabbet != null), hasSh = R.rows.some(r => r.shoulder != null);
@@ -604,15 +668,108 @@
     $('#steps-list').innerHTML = R.steps.map(x => `<li>${fr(x)}</li>`).join('');
   }
 
+  const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  /** "Two 1×4s and one 1×6" */
+  function boardCounts(counts) {
+    const parts = counts.map(c => `${WORDS[c.n] || c.n} ${c.name}${c.n === 1 ? '' : 's'}`);
+    const t = parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  function boardsText(counts, L) {
+    const t = boardCounts(counts);
+    return t.charAt(0).toLowerCase() + t.slice(1) + ` at ${Lplain(L)}`;
+  }
+  function renderSuggest() {
+    const sg = R.suggest, box = $('#suggest');
+    box.hidden = !sg;
+    if (!sg) return;
+    if (!sg.best) {
+      box.innerHTML = `<h3>Boards to buy</h3><p class="meta">${fr(`No standard board is wide enough for a ${L(Math.max(R.dims.ws, R.dims.wT, R.dims.wB))} strip. Glue up wider stock.`)}</p>`;
+      return;
+    }
+    const b = sg.best, mm = state.units === 'mm';
+    const lenTxt = mm ? L(sg.length) : sg.length % 12 === 0 ? `${sg.length / 12} ft` : L(sg.length);
+    const own = state.stock.source === 'boards';
+    let h = `<h3>${own ? 'If you bought every board new' : 'Boards to buy: least waste'}</h3>`;
+    h += `<p class="best"><b>${fr(boardCounts(b.counts))}</b>, ${fr(lenTxt)} long, ${fr(L(sg.thick))} thick</p>`;
+    h += `<p class="meta">${fr(`${plural(b.count, 'board')}, ${Math.round(b.waste * 100)}% waste. Rip: ${b.boards.map(x => `${x.name} → ${x.lanes.map(l => L(l.width)).join(' + ')}`).join('; ')}.`)}</p>`;
+    const alts = sg.singles.filter(x => !(x.counts.length === 1 && b.counts.length === 1 && x.counts[0].name === b.counts[0].name && x.count === b.count));
+    if (alts.length) {
+      h += '<table><thead><tr><th>All one size</th><th>Boards</th><th>Waste</th></tr></thead><tbody>' +
+        alts.map(a => `<tr><td>${esc(a.counts[0].name)}</td><td class="n">${a.count}</td><td class="n">${Math.round(a.waste * 100)}%</td></tr>`).join('') + '</tbody></table>';
+    }
+    if (!own) h += `<button type="button" class="btn" id="use-suggest">Lay out on these boards</button>`;
+    box.innerHTML = h;
+  }
+  function useSuggest() {
+    const n = state.stock.boards.length;
+    if (n && !confirm(`Replace the ${n === 1 ? 'board' : `${n} boards`} on your list with the suggested ones?`)) return;
+    update(s => { s.stock.source = 'boards'; s.stock.boards = []; s.stock.buy = true; });
+    toast('Laid out on the suggested boards');
+  }
+
+  function renderBoardsLayout() {
+    const lay = R.layout, box = $('#layout');
+    const W = Math.max(280, box.clientWidth || 600);
+    const maxL = Math.max(...lay.boards.map(b => b.l), 1), k = (W - 2) / maxL;
+    const minLane = Math.min(...lay.boards.flatMap(b => b.lanes.map(l => l.width)), 99);
+    const vs = Math.min(40, Math.max(8, 24 / minLane));
+    const have = lay.totalBoards - lay.buyCount;
+    $('#stock-sub').textContent = `${plural(lay.totalBoards, 'board')}${lay.buyCount && have ? `, ${lay.buyCount} to buy` : lay.buyCount ? ' to buy' : ''}`;
+    let sum = lay.totalBoards ? `${have ? `${have} of your boards used` : ''}${have && lay.buyCount ? '; ' : ''}${lay.buyCount ? `buy ${boardsText(countBoards(lay.boards.filter(b => b.src === 'buy')), lay.boardLength)}` : ''}. ${Math.round(lay.waste * 100)}% of the wood is left over.` : 'Add boards, or let it buy them.';
+    if (R.notes) sum += ' ' + R.notes.join(' ');
+    $('#stock-sum').innerHTML = fr(sum);
+    box.innerHTML = lay.boards.map((b, bi) => {
+      const H = Math.round(b.w * vs), bw = b.l * k;
+      let svg = `<svg class="board-svg" width="${W}" height="${H + 2}" viewBox="0 0 ${W} ${H + 2}" role="img" aria-label="${esc(`${b.name}: ${b.lanes.length} strips`)}">`;
+      svg += `<defs><pattern id="bhatch${bi}" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="var(--panel)"/><rect width="2" height="7" fill="var(--line)"/></pattern></defs>`;
+      svg += `<rect class="stock" x="0" y="1" width="${bw.toFixed(1)}" height="${H}" rx="2" fill="url(#bhatch${bi})"/>`;
+      let y = 1;
+      b.lanes.forEach((ln, li) => {
+        if (li) y += lay.kerf * vs;
+        const h = ln.width * vs;
+        svg += `<rect class="stock" x="0" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"/>`;
+        if (lay.trim > 0) svg += `<rect x="0" y="${y.toFixed(1)}" width="${(lay.trim * k).toFixed(1)}" height="${h.toFixed(1)}" fill="url(#bhatch${bi})"/>`;
+        for (const c of ln.cuts) {
+          const x0 = c.start * k, x1 = (c.start + c.length) * k;
+          const i0 = Math.min(h, Math.tan(c.angles[0] / C.DEG) * c.width * k), i1 = Math.min(h, Math.tan(c.angles[1] / C.DEG) * c.width * k);
+          const cls = c.label === 'Side' ? 'piece alt' : 'piece';
+          svg += `<polygon class="${cls}" points="${x0.toFixed(1)},${y.toFixed(1)} ${x1.toFixed(1)},${y.toFixed(1)} ${(x1 - i1).toFixed(1)},${(y + h).toFixed(1)} ${(x0 + i0).toFixed(1)},${(y + h).toFixed(1)}"><title>${esc(`${c.label}, ${L(c.length)} × ${L(c.width)}`)}</title></polygon>`;
+          const label = `${c.label} ${Lplain(c.length)}`, short = Lplain(c.length);
+          const room = (x1 - x0) - Math.max(i0, i1);
+          const text = h < 13 ? '' : room > label.length * 6.9 + 8 ? label : room > short.length * 6.9 + 6 ? short : '';
+          if (text) svg += `<text class="pl${c.label === 'Side' ? ' on-dark' : ''}" x="${((x0 + x1) / 2).toFixed(1)}" y="${(y + h / 2 + 4).toFixed(1)}" text-anchor="middle">${esc(text)}</text>`;
+        }
+        if (ln.remainder > 0.01 && h >= 13) {
+          const xo = (lay.trim + ln.used) * k, wo = ln.remainder * k, ot = `offcut ${Lplain(ln.remainder)}`;
+          if (wo > ot.length * 6.9 + 8) svg += `<text class="ol" x="${(xo + wo / 2).toFixed(1)}" y="${(y + h / 2 + 4).toFixed(1)}" text-anchor="middle">${esc(ot)}</text>`;
+        }
+        y += h;
+      });
+      svg += '</svg>';
+      const strips = b.lanes.map(l => L(l.width)).join(' + ');
+      const tag = b.src === 'buy' ? '<span class="tag-buy">Buy</span>' : '';
+      return `<div class="lgroup"><h3>${fr(`${b.name}: ${L(b.w)} × ${L(b.t)} × ${L(b.l)}`)}${tag}</h3><p class="meta">${fr(`Rip ${strips}${b.ripLeft > 0.05 ? `, leaving ${L(b.ripLeft)}` : ''}`)}</p>${svg}</div>`;
+    }).join('');
+  }
+  function countBoards(list) {
+    const out = [];
+    for (const b of list) { const c = out.find(x => x.name === b.name); if (c) c.n++; else out.push({ name: b.name, n: 1 }); }
+    return out;
+  }
+
   function renderLayout() {
+    renderSuggest();
+    if (R.layout.mode === 'boards') return renderBoardsLayout();
     const lay = R.layout, box = $('#layout');
     const W = Math.max(280, box.clientWidth || 600);
     const labelW = 62, barW = W - labelW - 2, k = barW / lay.boardLength;
     const rowH = 30, gap = 12;
     const s = state;
-    $('#stock-sub').textContent = `${plural(lay.totalBoards, 'board')} of ${L(lay.boardLength)}`;
-    let sum = `${plural(lay.totalBoards, 'board')}, ${Math.round(lay.waste * 100)}% left over as offcuts and kerf.`;
-    if (s.joint === 'miter' || s.joint === 'miterspline') sum += ` Buying molding? The usual rule of thumb is the perimeter plus 8 × the width: ${s.units === 'mm' ? L(lay.moldingRule) : `${(lay.moldingRule / 12).toFixed(1)} ft`}.`;
+    const unit = s.stock.source === 'molding' ? 'length' : 'board';
+    $('#stock-sub').textContent = `${plural(lay.totalBoards, unit)} of ${L(lay.boardLength)}`;
+    let sum = `${plural(lay.totalBoards, unit)}, ${Math.round(lay.waste * 100)}% left over as offcuts and kerf.`;
+    if (s.stock.source === 'molding' && (s.joint === 'miter' || s.joint === 'miterspline')) sum += ` Buying molding? The usual rule of thumb is the perimeter plus 8 × the width: ${s.units === 'mm' ? L(lay.moldingRule) : `${(lay.moldingRule / 12).toFixed(1)} ft`}.`;
     $('#stock-sum').innerHTML = fr(sum);
     box.innerHTML = lay.groups.map((g, gi) => {
       const h = g.boards.length * (rowH + gap) + 2;
@@ -722,6 +879,7 @@
         renderDesigns();
       }
     });
+    $('#suggest').addEventListener('click', e => { if (e.target.closest('#use-suggest')) useSuggest(); });
     $('#btn-copy').addEventListener('click', () => { if (R.ok) copyText(cutListText(), 'Cut list copied'); });
     if (!inFrame) {
       const link = $('#btn-link');
@@ -751,7 +909,7 @@
   /* ---------- Render loop ---------- */
 
   function renderAll() {
-    setSeg('units', state.units); setSeg('solve', state.solve); setSeg('innerRef', state.innerRef); setSeg('through', state.through);
+    setSeg('units', state.units); setSeg('solve', state.solve); setSeg('innerRef', state.innerRef); setSeg('through', state.through); setSeg('source', state.stock.source);
     setSeg('vmode', view.mode); setSeg('vangle', view.angle);
     for (const b of $$('#joints .jcard')) b.setAttribute('aria-pressed', String(b.dataset.joint === state.joint));
     $('#joint-blurb').textContent = R.joint.blurb;
