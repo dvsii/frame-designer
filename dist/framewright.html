@@ -1,0 +1,2874 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Framewright</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Design a picture frame by its dimensions and get the cut list, joinery details and stock layout for eight traditional frame joints.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  /* Layout: a shop drawing on the left (front elevation, corner model), the spec sheet on the right, the cut sheet below. */
+  --bg: #e8eae3;
+  --panel: #f7f8f4;
+  --sunk: #dde1d8;
+  --ink: #1c211e;
+  --muted: #58615a;
+  --line: #c4cbc0;
+  --tape: #f3c22f;
+  --tape-ink: #241d05;
+  --warn: #9a4a0e;
+  --warn-bg: #f6e3cf;
+  --error: #b42318;
+  --error-bg: #f7dcd8;
+  --mat-board: #f5f2e9;
+  --art-a: #b2c0b1;
+  --art-b: #cdd6ca;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r: 5px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121513; --panel: #1a1e1b; --sunk: #0e100f; --ink: #e4e8e2; --muted: #98a299; --line: #313833;
+    --tape: #f3c22f; --tape-ink: #241d05; --warn: #f3a35e; --warn-bg: #3a2716; --error: #f2786d; --error-bg: #3d1c19;
+    --mat-board: #d8d3c5; --art-a: #56655a; --art-b: #66746a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121513; --panel: #1a1e1b; --sunk: #0e100f; --ink: #e4e8e2; --muted: #98a299; --line: #313833;
+  --tape: #f3c22f; --tape-ink: #241d05; --warn: #f3a35e; --warn-bg: #3a2716; --error: #f2786d; --error-bg: #3d1c19;
+  --mat-board: #d8d3c5; --art-a: #56655a; --art-b: #66746a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.45 var(--font-body); }
+button, input, select { font: inherit; color: inherit; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; margin: 0; text-wrap: balance; }
+h2 { font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
+h3 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.num, input[data-path], input[data-jp], #ed-input { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.fr { font-size: 0.78em; white-space: nowrap; }
+.fr sup, .fr sub { font-size: 1em; line-height: 0; }
+.fr sup { vertical-align: 0.45em; }
+.fr sub { vertical-align: -0.05em; }
+.mk { color: var(--muted); font-size: 0.85em; margin-left: 1px; }
+
+.wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 56px; }
+
+/* Header */
+.top { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; padding-block: 16px 12px; }
+.brand { display: flex; align-items: center; gap: 12px; margin-right: auto; min-width: 0; }
+.brand .mark { width: 38px; height: 38px; flex: none; }
+.brand h1 { font-size: 26px; font-weight: 700; line-height: 1; text-transform: uppercase; letter-spacing: 0.02em; }
+.brand p { margin: 3px 0 0; color: var(--muted); font-size: 13.5px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 6px 12px; cursor: pointer; font-weight: 500; font-size: 14px; line-height: 1.3; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); padding: 2px; gap: 2px; }
+.seg button { border: 0; background: transparent; border-radius: 3px; padding: 4px 10px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg-wide { display: flex; }
+.seg-wide button { flex: 1; padding-inline: 6px; }
+
+/* Designs popover */
+.designs { border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 12px; margin-bottom: 12px; display: grid; gap: 10px; }
+.designs form { display: flex; gap: 8px; flex-wrap: wrap; }
+.designs input { flex: 1 1 200px; min-width: 0; border: 1px solid var(--line); border-radius: var(--r); padding: 6px 10px; background: var(--bg); }
+.designs ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.designs li { display: flex; gap: 8px; align-items: center; padding: 4px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.designs li .name { flex: 1 1 160px; min-width: 0; font-weight: 500; }
+.designs li .meta { color: var(--muted); font-size: 13px; }
+.designs .empty { color: var(--muted); margin: 0; }
+
+/* Sticky section bar */
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap;
+  background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border-block: 1px solid var(--line); padding-block: 7px; margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding-inline: max(16px, env(safe-area-inset-left, 0px)); }
+.bar-sum { margin-right: auto; font-family: var(--font-num); font-size: 13px; color: var(--ink); min-width: 0; }
+.bar a { color: var(--muted); text-decoration: none; font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
+.bar a:hover { color: var(--ink); }
+
+/* Joint picker */
+section { scroll-margin-top: 56px; }
+#design { padding-top: 16px; }
+.joints { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.jcard { flex: 0 0 auto; width: 132px; scroll-snap-align: start; border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 4px 4px 7px; text-align: left; cursor: pointer; display: grid; gap: 2px; }
+.jcard:hover { border-color: var(--muted); }
+.jcard canvas { width: 122px; height: 76px; display: block; }
+.jcard span { font-family: var(--font-display); font-weight: 600; font-size: 14px; padding-inline: 4px; line-height: 1.15; }
+.jcard[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 -4px 0 var(--tape); }
+.joint-blurb { margin: 6px 0 14px; color: var(--muted); max-width: 70ch; }
+
+/* Work area */
+.work { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.stage { display: grid; gap: 16px; min-width: 0; }
+@media (min-width: 1040px) {
+  .work { grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.85fr); align-items: start; }
+  .inspector { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 52px); max-height: calc(100vh - 68px); overflow: auto; }
+}
+.panel { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); min-width: 0; }
+.panel-head { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.panel-head .hint { color: var(--muted); font-size: 13px; margin-left: auto; }
+.front-stage { position: relative; width: 100%; height: 420px; overflow: hidden; }
+.front-stage .layer { position: absolute; left: 0; top: 0; }
+#front-over { overflow: visible; }
+.stage-msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); }
+.legend { display: flex; gap: 6px 16px; flex-wrap: wrap; padding: 8px 12px 10px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 18px; height: 12px; border-radius: 2px; display: inline-block; border: 1px solid rgba(0,0,0,.25); }
+.sw-tape { background: var(--tape); }
+.sw-calc { background: transparent; border: 1px dashed var(--muted); }
+.sw-hidden { border: 0; border-top: 1.5px dashed var(--muted); height: 0; width: 18px; }
+
+/* Dimension chips in the SVG overlay */
+.dimline { stroke: var(--muted); stroke-width: 1; fill: none; }
+.dimtick { stroke: var(--ink); stroke-width: 1.4; }
+.hidden-line { stroke: var(--ink); stroke-opacity: .55; stroke-width: 1; stroke-dasharray: 4 3; fill: none; }
+.rabbet-line { stroke: var(--ink); stroke-opacity: .45; stroke-width: 1; stroke-dasharray: 7 3 2 3; fill: none; }
+.chip { cursor: pointer; }
+.chip rect { fill: var(--tape); stroke: rgba(0,0,0,.35); stroke-width: 1; }
+.chip text { fill: var(--tape-ink); font: 500 12.5px var(--font-num); }
+.chip.calc rect { fill: var(--panel); stroke: var(--muted); stroke-dasharray: 3 2; }
+.chip.calc text { fill: var(--ink); }
+.chip:hover rect, .chip:focus-visible rect { stroke: var(--ink); stroke-width: 2; }
+.chip:focus { outline: none; }
+.center-label { font: 600 11px var(--font-display); letter-spacing: .1em; fill: var(--ink); text-transform: uppercase; }
+.center-sub { font: 400 11.5px var(--font-num); fill: var(--ink); opacity: .8; }
+.label-bg { fill: var(--panel); opacity: .85; }
+
+/* Corner view */
+.corner-stage { position: relative; height: 330px; touch-action: none; cursor: grab; }
+.corner-stage:active { cursor: grabbing; }
+.corner-stage canvas { display: block; }
+.corner-controls { display: flex; gap: 10px 14px; flex-wrap: wrap; align-items: center; padding: 8px 12px 10px; border-top: 1px solid var(--line); }
+.corner-controls label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.corner-controls input[type="range"] { width: 120px; accent-color: var(--ink); }
+.corner-controls .hint { margin-left: auto; color: var(--muted); font-size: 13px; }
+
+/* Inspector */
+.inspector { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 4px 14px 14px; min-width: 0; }
+.inspector fieldset { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 12px 0 4px; display: grid; gap: 10px; min-width: 0; }
+.inspector fieldset:first-child { border-top: 0; }
+.inspector legend { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; padding: 0; float: left; width: 100%; margin-bottom: 2px; }
+.inspector legend + * { clear: left; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.lbl { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: baseline; }
+.lbl .tag { margin-left: auto; font-size: 11px; font-family: var(--font-display); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.inp { position: relative; display: flex; align-items: center; }
+.inp input, .inp select { width: 100%; min-width: 0; height: 36px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); padding: 0 34px 0 10px; font-size: 14.5px; }
+.inp select { padding-right: 10px; font-family: var(--font-body); }
+.inp .u { position: absolute; right: 10px; color: var(--muted); font-size: 12.5px; pointer-events: none; }
+.inp input:hover { border-color: var(--muted); }
+.field.calc .inp input { border-style: dashed; background: transparent; cursor: pointer; }
+.field.calc .lbl .tag::after { content: "calculated"; }
+.field.bad .inp input { border-color: var(--error); box-shadow: 0 0 0 1px var(--error); }
+.field .err { color: var(--error); font-size: 12.5px; }
+.field .auto { margin-left: auto; font-size: 11px; font-family: var(--font-display); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.field .reset { border: 0; background: none; padding: 0; color: var(--ink); text-decoration: underline; cursor: pointer; font-size: 12px; margin-left: auto; }
+.pair, #joint-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+.span2 { grid-column: 1 / -1; }
+.trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--ink); margin: 0; }
+.check:has(input:disabled) { opacity: .5; cursor: default; }
+.help { margin: -2px 0 0; color: var(--muted); font-size: 13px; }
+.x { color: var(--muted); }
+
+/* Results */
+.results, #stock, #steps { margin-top: 28px; }
+.res-head { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; margin-bottom: 10px; }
+.res-head h2 { font-size: 20px; letter-spacing: .06em; }
+.res-head .sub { color: var(--muted); font-size: 14px; }
+.res-head .btn { margin-left: auto; }
+.warnings { display: grid; gap: 6px; margin-bottom: 12px; }
+.warn { display: flex; gap: 10px; align-items: flex-start; padding: 8px 12px; border-radius: var(--r); background: var(--warn-bg); color: var(--ink); }
+.warn b { font-family: var(--font-display); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; color: var(--warn); padding-top: 2px; flex: none; }
+.warn.error { background: var(--error-bg); }
+.warn.error b { color: var(--error); }
+.sum { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0; margin: 0 0 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); overflow: hidden; }
+.sum div { padding: 9px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 0 -1px -1px 0; }
+.sum dt { font-size: 12px; color: var(--muted); font-family: var(--font-display); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.sum dd { margin: 2px 0 0; font-family: var(--font-num); font-size: 15px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); }
+table { border-collapse: collapse; width: 100%; }
+.cuts th, .cuts td, .mats th, .mats td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.cuts th, .mats th { font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.cuts tr:last-child td, .mats tr:last-child td { border-bottom: 0; }
+.cuts td.n, .cuts th.n { text-align: right; white-space: nowrap; font-family: var(--font-num); }
+.cuts td.len { font-family: var(--font-num); font-size: 16px; font-weight: 500; white-space: nowrap; }
+.cuts td.part { font-weight: 600; white-space: nowrap; }
+.cuts td.notes { color: var(--muted); min-width: 220px; }
+.cuts td.mono { font-family: var(--font-num); white-space: nowrap; }
+.note { color: var(--muted); font-size: 13.5px; margin: 8px 0 0; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 24px; }
+@media (min-width: 900px) { .cols { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); } }
+.cols h3 { margin-bottom: 8px; }
+.card { padding: 10px 0 12px; border-top: 1px solid var(--line); }
+.card h4 { margin: 0 0 6px; font-family: var(--font-display); font-weight: 600; font-size: 16px; }
+.card ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; max-width: 70ch; }
+.mats-wrap { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); overflow-x: auto; }
+.mats td.n { font-family: var(--font-num); text-align: right; white-space: nowrap; }
+.mats td .size { font-family: var(--font-num); white-space: nowrap; }
+.mats td .meta { color: var(--muted); font-size: 13px; }
+
+/* Stock layout */
+.layout { display: grid; gap: 18px; }
+.lgroup h3 { color: var(--ink); margin-bottom: 4px; font-size: 14px; }
+.lgroup .meta { color: var(--muted); font-size: 13.5px; margin: 0 0 8px; }
+.board-svg { display: block; width: 100%; overflow: visible; }
+.board-svg .stock { fill: var(--sunk); stroke: var(--line); }
+.board-svg .piece { fill: var(--wood, #e2b882); stroke: #3a2a1d; stroke-width: 1; }
+.board-svg .piece.alt { fill: #b98154; }
+.board-svg .pl { font: 500 11.5px var(--font-num); fill: #2a1d12; }
+.board-svg .piece.alt + .pl, .board-svg .pl.on-dark { fill: #fff6ea; }
+.board-svg .off { fill: url(#hatch); stroke: var(--line); }
+.board-svg .ol { font: 400 11.5px var(--font-num); fill: var(--muted); }
+.board-svg .bl { font: 600 11px var(--font-display); letter-spacing: .08em; fill: var(--muted); text-transform: uppercase; }
+.board-svg .over { fill: var(--error-bg); stroke: var(--error); }
+.stock-sum { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+
+/* Steps */
+#steps ol { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 8px; max-width: 75ch; }
+#steps li::marker { font-family: var(--font-num); color: var(--muted); }
+
+footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
+footer p { margin: 0; max-width: 80ch; }
+
+/* Dimension editor */
+.editor { position: fixed; z-index: 40; width: min(300px, calc(100vw - 24px)); background: var(--panel); border: 1px solid var(--ink); border-radius: var(--r); box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 12px; display: grid; gap: 10px; }
+.editor label { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+.editor .inp input { height: 42px; font-size: 18px; }
+.ed-fr { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.ed-fr button, .ed-nudge button { border: 1px solid var(--line); background: var(--bg); border-radius: 3px; padding: 6px 0; cursor: pointer; font-family: var(--font-num); font-size: 13px; }
+.ed-fr button:hover, .ed-nudge button:hover { border-color: var(--ink); }
+.ed-nudge { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.ed-note { margin: 0; font-size: 13px; color: var(--muted); }
+.ed-err { margin: 0; font-size: 13px; color: var(--error); }
+.ed-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: var(--r); font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 50; max-width: calc(100vw - 32px); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+@media (max-width: 560px) {
+  .brand h1 { font-size: 22px; }
+  .front-stage { height: 360px; }
+  .corner-stage { height: 270px; }
+  .trio { grid-template-columns: 1fr 1fr; }
+  .bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 12px; }
+  .bar::-webkit-scrollbar { display: none; }
+  .bar-sum, .bar a { white-space: nowrap; flex: none; }
+  .bar a { font-size: 12px; }
+  .lbl .tag { font-size: 10px; }
+  .actions #btn-print { display: none; }
+  /* Cut list rows become cards: part and length on top, the rest labelled below. */
+  .cuts thead { display: none; }
+  .cuts tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 12px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .cuts tr:last-child { border-bottom: 0; }
+  .cuts td { padding: 0; border: 0; grid-column: 1 / -1; }
+  .cuts td.part { grid-column: 1; grid-row: 1; font-size: 16px; }
+  .cuts td.len { grid-column: 2; grid-row: 1; text-align: right; font-size: 18px; }
+  .cuts td.n { text-align: left; }
+  .cuts td.empty { display: none; }
+  .cuts td.notes { min-width: 0; }
+  .cuts td[data-label]::before { content: attr(data-label) "  "; font-family: var(--font-display); font-weight: 600; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
+}
+
+@media print {
+  body { background: #fff; color: #000; }
+  .actions, .bar, .joints, .inspector, .corner-controls, .legend, .res-head .btn, .editor, .toast, .designs, .panel-head .hint { display: none !important; }
+  .work { grid-template-columns: 1fr 1fr !important; }
+  .panel, .table-wrap, .sum, .mats-wrap { border-color: #999; }
+  section { break-inside: avoid-page; }
+  .results, #stock, #steps { margin-top: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+        <rect x="1" y="1" width="38" height="38" rx="4" fill="var(--ink)"/>
+        <path d="M7 7h26l-8 8H15v10l-8 8z" fill="var(--tape)"/>
+        <path d="M7 7l8 8" stroke="var(--ink)" stroke-width="1.6"/>
+      </svg>
+      <div>
+        <h1>Framewright</h1>
+        <p>Picture frame cut lists for eight ways to join a corner</p>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="seg" data-seg="units" role="group" aria-label="Units">
+        <button type="button" data-val="in">in</button>
+        <button type="button" data-val="mm">mm</button>
+      </div>
+      <button type="button" class="btn" id="btn-designs" aria-expanded="false" aria-controls="designs">Saved designs</button>
+      <button type="button" class="btn" id="btn-link" hidden>Copy link</button>
+      <button type="button" class="btn" id="btn-print" hidden>Print</button>
+      <button type="button" class="btn" id="btn-install" hidden>Install app</button>
+    </div>
+  </header>
+
+  <div class="designs" id="designs" hidden>
+    <form id="save-form">
+      <input id="save-name" aria-label="Design name" placeholder="Name this design, e.g. Hallway mirror" maxlength="60">
+      <button type="submit" class="btn primary">Save current design</button>
+    </form>
+    <ul id="design-list"></ul>
+    <p class="empty" id="design-empty">Saved designs stay in this browser on this device.</p>
+  </div>
+
+  <nav class="bar" aria-label="Sections">
+    <span class="bar-sum" id="bar-sum"></span>
+    <a href="#design">Design</a>
+    <a href="#cutlist">Cut list</a>
+    <a href="#stock">Stock</a>
+    <a href="#steps">Steps</a>
+  </nav>
+
+  <section id="design" aria-label="Design">
+    <div class="joints" id="joints" role="group" aria-label="Corner joint"></div>
+    <p class="joint-blurb" id="joint-blurb"></p>
+
+    <div class="work">
+      <div class="stage">
+        <figure class="panel">
+          <figcaption class="panel-head">
+            <h2>Front view</h2>
+            <span class="hint">Tap a yellow dimension to change it</span>
+          </figcaption>
+          <div class="front-stage" id="front-stage">
+            <svg id="front-under" class="layer" aria-hidden="true"></svg>
+            <canvas id="front-canvas" class="layer" role="img" aria-label="Front view of the frame"></canvas>
+            <svg id="front-over" class="layer"></svg>
+            <div class="stage-msg" id="front-msg" hidden></div>
+          </div>
+          <div class="legend">
+            <span><i class="swatch sw-tape"></i>Size you set</span>
+            <span><i class="swatch sw-calc"></i>Calculated</span>
+            <span><i class="swatch sw-hidden"></i>Hidden joinery and rabbet</span>
+          </div>
+        </figure>
+
+        <figure class="panel">
+          <figcaption class="panel-head">
+            <h2>Corner joint</h2>
+            <div class="seg" data-seg="vmode" role="group" aria-label="Model">
+              <button type="button" data-val="corner">Corner</button>
+              <button type="button" data-val="frame">Whole frame</button>
+            </div>
+            <div class="seg" data-seg="vangle" role="group" aria-label="Viewpoint">
+              <button type="button" data-val="iso">Front</button>
+              <button type="button" data-val="back">Back</button>
+              <button type="button" data-val="flat">Face on</button>
+            </div>
+          </figcaption>
+          <div class="corner-stage" id="corner-stage">
+            <canvas id="corner-canvas" role="img" aria-label="3D view of the corner joint"></canvas>
+            <div class="stage-msg" id="corner-msg" hidden></div>
+          </div>
+          <div class="corner-controls">
+            <label for="explode">Assembled <input type="range" id="explode" min="0" max="1" step="0.01" value="0.55"> Apart</label>
+            <span class="hint">Drag to turn it</span>
+          </div>
+        </figure>
+      </div>
+
+      <form class="inspector" id="inspector" autocomplete="off" novalidate>
+        <fieldset>
+          <legend>Size</legend>
+          <div class="field">
+            <span class="lbl" id="lbl-solve">Calculate</span>
+            <div class="seg seg-wide" data-seg="solve" role="group" aria-labelledby="lbl-solve">
+              <button type="button" data-val="outside">Outside size</button>
+              <button type="button" data-val="opening" id="solve-inner-btn">Artwork size</button>
+              <button type="button" data-val="widths">Widths</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="lbl" id="lbl-ref">Measure the inside by</span>
+            <div class="seg seg-wide" data-seg="innerRef" role="group" aria-labelledby="lbl-ref">
+              <button type="button" data-val="art">Artwork or glass</button>
+              <button type="button" data-val="sight">Visible opening</button>
+            </div>
+          </div>
+          <div class="pair">
+            <label class="field" data-calc="opening"><span class="lbl"><span><span class="lbl-inner">Artwork</span> width</span><span class="tag"></span></span>
+              <span class="inp"><input id="f-inner-w" data-path="inner.w" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field" data-calc="opening"><span class="lbl"><span><span class="lbl-inner">Artwork</span> height</span><span class="tag"></span></span>
+              <span class="inp"><input id="f-inner-h" data-path="inner.h" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <div class="pair">
+            <label class="field" data-calc="outside"><span class="lbl">Outside width<span class="tag"></span></span>
+              <span class="inp"><input id="f-out-w" data-path="outside.w" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field" data-calc="outside"><span class="lbl">Outside height<span class="tag"></span></span>
+              <span class="inp"><input id="f-out-h" data-path="outside.h" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <div class="trio">
+            <label class="field" data-calc="widths"><span class="lbl">Stiles<span class="tag"></span></span>
+              <span class="inp"><input id="f-stile" data-path="stile" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field" data-calc="widths"><span class="lbl">Top rail<span class="tag"></span></span>
+              <span class="inp"><input id="f-top" data-path="top" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field" data-calc="widths"><span class="lbl">Bottom rail<span class="tag"></span></span>
+              <span class="inp"><input id="f-bottom" data-path="bottom" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <label class="check"><input type="checkbox" id="f-link" data-path="linkWidths" data-kind="bool"> Same width all round</label>
+          <p class="help">Stiles are the sides; rails are the top and bottom. Type fractions as 11 3/4 or 11-3/4, or metric like 298 mm.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Stock and rabbet</legend>
+          <div class="pair">
+            <label class="field"><span class="lbl">Stock thickness</span>
+              <span class="inp"><input id="f-thick" data-path="thickness" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field"><span class="lbl">Fit allowance</span>
+              <span class="inp"><input id="f-clear" data-path="clearance" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <div class="pair">
+            <label class="field"><span class="lbl">Rabbet width (lip)</span>
+              <span class="inp"><input id="f-rabw" data-path="rabbetW" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field"><span class="lbl">Rabbet depth</span>
+              <span class="inp"><input id="f-rabd" data-path="rabbetD" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <p class="help">The rabbet is the step behind the frame that holds the glass, art and backer. The fit allowance is the total play around the glass.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend id="lg-joint">Joint</legend>
+          <div class="field" id="through-field">
+            <span class="lbl" id="lbl-through">Runs through to the corner</span>
+            <div class="seg seg-wide" data-seg="through" role="group" aria-labelledby="lbl-through">
+              <button type="button" data-val="stiles">Stiles (sides)</button>
+              <button type="button" data-val="rails">Rails (top &amp; bottom)</button>
+            </div>
+          </div>
+          <div id="joint-fields" class="field-list"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Mat</legend>
+          <label class="check"><input type="checkbox" id="f-mat" data-path="mat.on" data-kind="bool"> Add a mat around the artwork</label>
+          <div id="mat-fields" class="field-list" style="display:grid;gap:10px">
+            <div class="trio">
+              <label class="field"><span class="lbl">Sides</span>
+                <span class="inp"><input id="f-mat-side" data-path="mat.side" spellcheck="false"><span class="u"></span></span></label>
+              <label class="field"><span class="lbl">Top</span>
+                <span class="inp"><input id="f-mat-top" data-path="mat.top" spellcheck="false"><span class="u"></span></span></label>
+              <label class="field"><span class="lbl">Bottom</span>
+                <span class="inp"><input id="f-mat-bottom" data-path="mat.bottom" spellcheck="false"><span class="u"></span></span></label>
+            </div>
+            <label class="field"><span class="lbl">Window overlaps the image by</span>
+              <span class="inp"><input id="f-mat-ov" data-path="mat.overlap" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Cutting</legend>
+          <div class="pair">
+            <label class="field"><span class="lbl">Board length</span>
+              <span class="inp"><input id="f-board" data-path="stock.length" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field"><span class="lbl">Saw kerf</span>
+              <span class="inp"><input id="f-kerf" data-path="stock.kerf" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <div class="pair">
+            <label class="field"><span class="lbl">End trim per board</span>
+              <span class="inp"><input id="f-trim" data-path="stock.trim" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field"><span class="lbl">Frames to make</span>
+              <span class="inp"><input id="f-qty" data-path="qty" data-kind="int" inputmode="numeric" spellcheck="false"></span></label>
+          </div>
+          <label class="check"><input type="checkbox" id="f-grain" data-path="stock.grain" data-kind="bool"> Cut each frame in order so the grain wraps the corners</label>
+          <label class="field"><span class="lbl">Round to</span>
+            <span class="inp"><select id="f-prec"></select></span></label>
+        </fieldset>
+      </form>
+    </div>
+  </section>
+
+  <section class="results" id="cutlist" aria-label="Cut list">
+    <div class="res-head">
+      <h2>Cut list</h2>
+      <span class="sub" id="cut-sub"></span>
+      <button type="button" class="btn" id="btn-copy">Copy as text</button>
+    </div>
+    <div class="warnings" id="warnings"></div>
+    <dl class="sum" id="sum"></dl>
+    <div class="table-wrap"><table class="cuts" id="cuts"></table></div>
+    <p class="note" id="cut-note"></p>
+    <div class="cols">
+      <div>
+        <h3>Joinery</h3>
+        <div id="cards"></div>
+      </div>
+      <div>
+        <h3>Materials and hardware</h3>
+        <div class="mats-wrap"><table class="mats" id="mats"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="stock" aria-label="Stock layout">
+    <div class="res-head">
+      <h2>Stock layout</h2>
+      <span class="sub" id="stock-sub"></span>
+    </div>
+    <p class="stock-sum" id="stock-sum"></p>
+    <div class="layout" id="layout"></div>
+  </section>
+
+  <section id="steps" aria-label="Build steps">
+    <div class="res-head"><h2>Build steps</h2></div>
+    <ol id="steps-list"></ol>
+  </section>
+
+  <footer>
+    <p>All sizes are worked out from your inputs; check the first cut against a test piece before cutting good stock. A + or − after a fraction means the true size is a hair over or under it.</p>
+    <p>Framewright runs entirely in your browser. Nothing you enter leaves this device.</p>
+  </footer>
+</div>
+
+<div class="editor" id="editor" role="dialog" aria-modal="false" aria-labelledby="ed-label" hidden>
+  <label for="ed-input" id="ed-label">Dimension</label>
+  <span class="inp"><input id="ed-input" spellcheck="false" autocomplete="off"><span class="u"></span></span>
+  <div class="ed-fr" id="ed-fr"></div>
+  <div class="ed-nudge" id="ed-nudge"></div>
+  <p class="ed-note" id="ed-note"></p>
+  <p class="ed-err" id="ed-err" hidden></p>
+  <div class="ed-actions">
+    <button type="button" class="btn" id="ed-cancel">Cancel</button>
+    <button type="button" class="btn primary" id="ed-ok">Set size</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* Framewright core: frame sizing, joinery, cut list and stock layout.
+   Pure functions with no DOM access. Every length is in inches internally;
+   formatting converts to the user's units at the edges. */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.FWCore = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  const MM = 25.4;
+  const DEG = 180 / Math.PI;
+
+  const JOINTS = [
+    { id: 'miter', name: 'Miter', through: false,
+      blurb: 'Angled corners with the grain running unbroken around the frame. The joint is end grain, so reinforce it with keys, V-nails or biscuits.' },
+    { id: 'halflap', name: 'Half-lap', through: true,
+      blurb: 'Both pieces are cut to half thickness where they overlap. A big glue area makes it very strong; end grain shows on the outside edges.' },
+    { id: 'mitredlap', name: 'Mitered half-lap', through: false,
+      blurb: 'A miter on the face with a half-lap behind it: the look of a miter with many times the glue area.' },
+    { id: 'bridle', name: 'Bridle', through: true,
+      blurb: 'An open slot in one piece takes a full-width tenon on the other. Strong, and easy to cut on the table saw.' },
+    { id: 'mortise', name: 'Mortise & tenon', through: true,
+      blurb: 'A hidden tenon glued into a mortise. The traditional joint for sash, door and Arts & Crafts frames.' },
+    { id: 'tongue', name: 'Tongue & groove', through: true,
+      blurb: 'A groove runs along every inside edge and short tongues on the rails fit into it. Quick with a dado stack or slot cutter.' },
+    { id: 'cope', name: 'Cope & stick', through: true,
+      blurb: 'Matched router bits profile the inside edges and cope the rail ends to fit over them, as on a cabinet door.' },
+    { id: 'butt', name: 'Butt joint', through: true,
+      blurb: 'Square-cut ends held with dowels, biscuits, pocket screws or loose tenons. The fastest frame to make.' },
+  ];
+  const JOINT_BY_ID = Object.fromEntries(JOINTS.map(j => [j.id, j]));
+
+  const BISCUITS = [
+    { name: '#20', len: 2.375, wid: 0.9375 },
+    { name: '#10', len: 2.125, wid: 0.75 },
+    { name: '#0', len: 1.875, wid: 0.625 },
+    { name: 'FF', len: 1.5, wid: 0.5 },
+  ];
+  const DOMINOS = [
+    { name: '4 × 20 mm', maxT: 0.6, t: 4 / MM, w: 17 / MM, len: 20 / MM },
+    { name: '5 × 30 mm', maxT: 0.85, t: 5 / MM, w: 19 / MM, len: 30 / MM },
+    { name: '6 × 40 mm', maxT: 1.15, t: 6 / MM, w: 20 / MM, len: 40 / MM },
+    { name: '8 × 40 mm', maxT: Infinity, t: 8 / MM, w: 22 / MM, len: 40 / MM },
+  ];
+  // Pocket screw length by stock thickness (inches), after the common jig charts.
+  const POCKET = [[0.5, 1], [0.625, 1], [0.75, 1.25], [0.875, 1.5], [1, 1.5], [1.125, 1.5], [1.25, 2], [1.375, 2], [1.5, 2.5]];
+  const VNAILS_MM = [7, 10, 12, 15];
+
+  function defaultState() {
+    return {
+      v: 1,
+      units: 'in', precIn: 16, precMm: 0.5,
+      joint: 'miter',
+      solve: 'outside',          // which quantity is calculated: outside | opening | widths
+      innerRef: 'art',           // the inner size means the artwork (glass) or the sight opening
+      inner: { w: 11, h: 14 },
+      outside: { w: 0, h: 0 },
+      stile: 2, top: 2, bottom: 2, linkWidths: true,
+      thickness: 0.75,
+      rabbetW: 0.375, rabbetD: 0.375, clearance: 0.125,
+      mat: { on: false, side: 2, top: 2, bottom: 2.5, overlap: 0.125 },
+      through: 'stiles',
+      jp: {},                    // per-joint overrides; missing means automatic
+      stock: { length: 96, kerf: 0.125, trim: 0, grain: true },
+      qty: 1,
+    };
+  }
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function num(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
+
+  function normalizeState(input) {
+    const base = defaultState();
+    const s = Object.assign(base, clone(input || {}));
+    const def = defaultState();
+    s.inner = Object.assign(def.inner, s.inner);
+    s.outside = Object.assign(def.outside, s.outside);
+    s.mat = Object.assign(def.mat, s.mat);
+    s.stock = Object.assign(def.stock, s.stock);
+    s.jp = Object.assign({}, s.jp);
+    if (!JOINT_BY_ID[s.joint]) s.joint = 'miter';
+    if (!['outside', 'opening', 'widths'].includes(s.solve)) s.solve = 'outside';
+    if (!['art', 'sight'].includes(s.innerRef)) s.innerRef = 'art';
+    if (!['stiles', 'rails'].includes(s.through)) s.through = 'stiles';
+    if (s.units !== 'mm') s.units = 'in';
+    if (![8, 16, 32, 'dec'].includes(s.precIn)) s.precIn = 16;
+    if (![1, 0.5, 0.1].includes(s.precMm)) s.precMm = 0.5;
+    for (const k of ['stile', 'top', 'bottom', 'thickness', 'rabbetW', 'rabbetD', 'clearance']) s[k] = num(s[k], def[k]);
+    for (const k of ['w', 'h']) { s.inner[k] = num(s.inner[k], def.inner[k]); s.outside[k] = num(s.outside[k], 0); }
+    s.qty = Math.max(1, Math.min(99, Math.round(num(s.qty, 1))));
+    s.stock.length = Math.max(1, num(s.stock.length, 96));
+    if (s.solve === 'widths') s.linkWidths = false;
+    if (s.linkWidths) s.top = s.bottom = s.stile;
+    return s;
+  }
+
+  /* ---------- Formatting and parsing ---------- */
+
+  function trimZeros(t) { return t.indexOf('.') >= 0 ? t.replace(/\.?0+$/, '') : t; }
+
+  function fmtLen(v, units, prec, opts) {
+    opts = opts || {};
+    const unit = opts.unit !== false;
+    if (!isFinite(v)) return '—';
+    if (units === 'mm') {
+      const step = prec || 0.5;
+      const r = Math.round(v * MM / step) * step;
+      return trimZeros(r.toFixed(step < 1 ? 1 : 0)) + (unit ? ' mm' : '');
+    }
+    if (prec === 'dec') return trimZeros(v.toFixed(3)) + (unit ? '"' : '');
+    const D = prec || 16;
+    const neg = v < 0;
+    const a = Math.abs(v);
+    const n = Math.round(a * D);
+    const err = a - n / D;
+    const whole = Math.floor(n / D);
+    let numr = n % D, den = D;
+    while (numr && numr % 2 === 0) { numr /= 2; den /= 2; }
+    let t = numr ? (whole ? `${whole} ${numr}/${den}` : `${numr}/${den}`) : `${whole}`;
+    if (unit) t += '"';
+    if (opts.mark !== false && Math.abs(err) > 1 / (4 * D) && n > 0) t += err > 0 ? '+' : '−';
+    return (neg && n > 0 ? '−' : '') + t;
+  }
+
+  function fmtAngle(a) {
+    const r = Math.round(a);
+    return Math.abs(a - r) < 0.05 ? `${r}°` : `${a.toFixed(1)}°`;
+  }
+
+  function parseNum(t) {
+    t = t.trim();
+    let m = t.match(/^(\d+(?:\.\d+)?)[ -]+(\d+)\/(\d+)$/);
+    if (m) return +m[3] ? +m[1] + +m[2] / +m[3] : NaN;
+    m = t.match(/^(\d+)\/(\d+)$/);
+    if (m) return +m[2] ? +m[1] / +m[2] : NaN;
+    return parseFloat(t);
+  }
+
+  /** Parse a length typed by a person: 11 3/4, 11-3/4, 11.75", 298mm, 1' 2 1/2". Returns inches or NaN. */
+  function parseLen(input, units) {
+    if (typeof input === 'number') return input;
+    let s = String(input == null ? '' : input).trim().toLowerCase();
+    if (!s) return NaN;
+    s = s.replace(/[″”"]/g, ' in ').replace(/[′’']/g, ' ft ').replace(/,/g, '.')
+      .replace(/\s+/g, ' ').trim().replace(/[+−]+$/, '').trim();
+    const re = /(\d+(?:\.\d+)?[ -]+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?|\.\d+)\s*(mm|cm|m|inches|inch|in|feet|foot|ft)?/g;
+    const toIn = { mm: 1 / MM, cm: 10 / MM, m: 1000 / MM, in: 1, ft: 12 };
+    const alias = { inch: 'in', inches: 'in', feet: 'ft', foot: 'ft' };
+    let total = 0, count = 0, lastUnit = null, lastExplicit = true, m;
+    while ((m = re.exec(s))) {
+      if (count > 0 && !lastExplicit) return NaN;      // "2 3" is ambiguous
+      const val = parseNum(m[1]);
+      if (!isFinite(val)) return NaN;
+      let unit = m[2] ? (alias[m[2]] || m[2]) : null;
+      lastExplicit = !!unit;
+      if (!unit) unit = lastUnit === 'ft' ? 'in' : (units === 'mm' ? 'mm' : 'in');
+      total += val * toIn[unit];
+      lastUnit = unit;
+      count++;
+    }
+    if (!count || s.replace(re, '').replace(/\s+/g, '')) return NaN;
+    return total;
+  }
+
+  function makeFmt(s) {
+    const prec = s.units === 'mm' ? s.precMm : s.precIn;
+    return {
+      units: s.units,
+      L: v => fmtLen(v, s.units, prec),
+      plain: v => fmtLen(v, s.units, prec, { unit: false }),
+      A: fmtAngle,
+      n: v => String(v),
+    };
+  }
+
+  function nice(v, units) {
+    if (units === 'mm') return Math.round(v * MM * 2) / 2 / MM;
+    return Math.round(v * 16) / 16;
+  }
+  function niceDown(v, units) {
+    if (units === 'mm') return Math.floor(v * MM * 2) / 2 / MM;
+    return Math.floor(v * 16) / 16;
+  }
+
+  /* ---------- Sizes ---------- */
+
+  function matOffsets(s) {
+    if (!s.mat.on) return { w: 0, h: 0 };
+    return { w: 2 * s.mat.side - 2 * s.mat.overlap, h: s.mat.top + s.mat.bottom - 2 * s.mat.overlap };
+  }
+
+  /** Work out every size from the state. Writes the calculated values back into s. */
+  function solve(s, F) {
+    const R = Math.max(0, s.rabbetW), c = Math.max(0, s.clearance);
+    const mo = matOffsets(s);
+    const toSight = s.innerRef === 'sight' ? { w: 0, h: 0 } : { w: mo.w + c - 2 * R, h: mo.h + c - 2 * R };
+    let SW, SH;
+    if (s.solve === 'opening') {
+      SW = s.outside.w - 2 * s.stile;
+      SH = s.outside.h - s.top - s.bottom;
+      s.inner.w = SW - toSight.w;
+      s.inner.h = SH - toSight.h;
+    } else {
+      SW = s.inner.w + toSight.w;
+      SH = s.inner.h + toSight.h;
+      if (s.solve === 'outside') {
+        s.outside.w = SW + 2 * s.stile;
+        s.outside.h = SH + s.top + s.bottom;
+      } else {
+        s.stile = (s.outside.w - SW) / 2;
+        const vert = s.outside.h - SH;
+        const ratio = s.top > 0 && s.bottom > 0 ? s.bottom / s.top : 1;
+        s.top = vert / (1 + ratio);
+        s.bottom = vert - s.top;
+      }
+    }
+    const d = {
+      OW: s.outside.w, OH: s.outside.h, SW, SH,
+      RW: SW + 2 * R, RH: SH + 2 * R, GW: SW + 2 * R - c, GH: SH + 2 * R - c,
+      ws: s.stile, wT: s.top, wB: s.bottom, T: s.thickness, R, D: Math.max(0, s.rabbetD), c,
+      warnings: [],
+    };
+    d.diag = Math.hypot(d.OW, d.OH);
+    if (s.mat.on) {
+      d.IW = d.GW - mo.w; d.IH = d.GH - mo.h;
+      d.MW = d.IW - 2 * s.mat.overlap; d.MH = d.IH - 2 * s.mat.overlap;
+    }
+    const W = d.warnings;
+    const err = text => W.push({ level: 'error', text });
+    const warn = text => W.push({ level: 'warn', text });
+    const minW = Math.min(d.ws, d.wT, d.wB);
+    if (minW <= 0) err('A rail or stile width is zero or less. Make the outside size bigger or the artwork smaller.');
+    else if (minW <= R + 0.125) err(`Every frame member must be wider than the rabbet (${F.L(R)}) by at least 1/8". Widen the members or narrow the rabbet.`);
+    if (SW <= 0 || SH <= 0) err('The sight opening has no room left. Make the outside size bigger or the members narrower.');
+    if (d.T <= 0) err('Stock thickness must be greater than zero.');
+    else if (d.D >= d.T) err('The rabbet is as deep as the stock is thick. Make it shallower.');
+    else if (d.T - d.D < 0.1875) warn(`The lip in front of the rabbet is only ${F.L(d.T - d.D)} thick and may break off. Aim for at least 1/4".`);
+    if (d.GW <= 0 || d.GH <= 0) err('The glass size works out to zero or less. Check the artwork size and the rabbet width.');
+    if (s.mat.on && (d.MW <= 0 || d.MH <= 0)) err('The mat window is too small. Reduce the mat borders or the overlap.');
+    if (R > 0 && d.D > 0 && d.D < 0.125) warn('A rabbet under 1/8" deep will not hold glass, art and backer. Most frames need 3/8" or more.');
+    return d;
+  }
+
+  /* ---------- Joint parameters ---------- */
+
+  function dowelSizes(units) {
+    return units === 'mm' ? [6, 8, 10, 12].map(v => v / MM) : [0.25, 0.3125, 0.375, 0.5];
+  }
+  function pocketScrew(T) {
+    let best = POCKET[0][1];
+    for (const [t, l] of POCKET) if (t <= T + 0.03) best = l;
+    return best;
+  }
+
+  function resolveParams(s, d) {
+    const u = s.units, jp = s.jp || {}, T = d.T;
+    const auto = {};
+    const pos = (k, v) => { auto[k] = v; const o = jp[k]; return typeof o === 'number' && isFinite(o) && o > 0 ? o : v; };
+    const nonneg = (k, v) => { auto[k] = v; const o = jp[k]; return typeof o === 'number' && isFinite(o) && o >= 0 ? o : v; };
+    const pickEnum = (k, v, allowed) => { auto[k] = v; return allowed.includes(jp[k]) ? jp[k] : v; };
+    const joint = JOINT_BY_ID[s.joint];
+    const thr = joint.through && s.through === 'rails';
+    const wThrough = thr ? Math.min(d.wT, d.wB) : d.ws;          // member that runs through
+    const wJoin = thr ? d.ws : Math.min(d.wT, d.wB);              // member that joins into it
+    const p = { auto, thr };
+
+    p.miterReinf = pickEnum('miterReinf', 'keys', ['keys', 'vnails', 'biscuits', 'none']);
+    p.keys = pickEnum('keys', T >= 1 ? 2 : 1, [1, 2, 3]);
+    p.keyThick = pos('keyThick', u === 'mm' ? 3 / MM : 0.125);
+    const keyRoom = d.ws + Math.min(d.wT, d.wB) - 2 * d.R;
+    p.keyLeg = pos('keyLeg', Math.max(0.25, nice(Math.min(u === 'mm' ? 38 / MM : 1.5, 0.6 * keyRoom), u)));
+
+    p.lapDepth = pos('lapDepth', nice(T / 2, u));
+    p.tenonThick = pos('tenonThick', Math.max(nice(T / 3, u), 0.0625));
+    p.tenonLen = pos('tenonLen', Math.max(0.25, nice(Math.min(wThrough * 2 / 3, wThrough - 0.25), u)));
+    p.shoulderOut = nonneg('shoulderOut', nice(Math.min(0.25, wJoin / 6), u));
+    const cheek = (T - p.tenonThick) / 2;
+    p.shoulderIn = nonneg('shoulderIn', d.D > cheek + 1e-6 ? nice(d.R + 0.0625, u) : nice(Math.min(0.125, wJoin / 8), u));
+    p.horn = nonneg('horn', 0);
+
+    p.grooveW = pos('grooveW', Math.max(nice(T / 3, u), 0.0625));
+    p.grooveD = pos('grooveD', Math.max(0.125, nice(Math.min(0.375, Math.min(d.ws, d.wT, d.wB) / 4), u)));
+    p.copeD = pos('copeD', u === 'mm' ? 9.5 / MM : 0.375);
+
+    p.buttReinf = pickEnum('buttReinf', 'dowels', ['dowels', 'biscuits', 'pocket', 'domino']);
+    const sizes = dowelSizes(u);
+    let dia = sizes[0];
+    for (const z of sizes) if (z <= T / 2 + 1e-6) dia = z;
+    p.dowelDia = pos('dowelDia', dia);
+    p.dowelLen = pos('dowelLen', Math.max(0.75, nice(Math.min(2, 2 * Math.min(1, wThrough - 0.375)), u)));
+    return p;
+  }
+
+  /** How far into a member's width a centered fastener can sit without the rabbet cutting into it. */
+  function bandFor(w, d, size, z) {
+    const zc = z == null ? d.T / 2 : z;
+    const conflict = d.R > 0 && d.D > zc - size / 2 - 1e-6;
+    return conflict ? Math.max(0, w - d.R) : w;
+  }
+  function spread(band, count, edge) {
+    if (count <= 1) return [band / 2];
+    const inset = Math.min(band / 2, Math.max(edge, band / (2 * count)));
+    const out = [];
+    for (let i = 0; i < count; i++) out.push(inset + (band - 2 * inset) * i / (count - 1));
+    return out;
+  }
+
+  /** Fastener layout for one butt joint whose joining member is w wide. Positions are from the outer edge. */
+  function fastenerPlan(d, p, w) {
+    const kind = p.buttReinf, T = d.T;
+    if (kind === 'dowels') {
+      const band = bandFor(w, d, p.dowelDia);
+      const count = band >= 2.25 ? 2 : 1;
+      return { kind, count, band, positions: spread(band, count, p.dowelDia), dia: p.dowelDia, len: p.dowelLen, z: T / 2 };
+    }
+    if (kind === 'biscuits') {
+      const lip = T - d.D;
+      const inLip = d.R > 0 && lip >= 0.3;
+      const z = inLip ? d.D + lip / 2 : T / 2;
+      const band = inLip || d.R === 0 ? w : bandFor(w, d, 0.16, z);
+      const biscuit = BISCUITS.find(b => b.len + 0.25 <= band) || null;
+      return { kind, count: biscuit ? 1 : 0, band, positions: [band / 2], biscuit, z };
+    }
+    if (kind === 'pocket') {
+      const band = Math.max(0, w - d.R);
+      const count = band < 1.25 ? 1 : band < 3.25 ? 2 : 3;
+      return { kind, count, band, positions: spread(band, count, 0.375), screw: pocketScrew(T) };
+    }
+    const dm = DOMINOS.find(x => T <= x.maxT);
+    const band = bandFor(w, d, dm.t);
+    const count = band >= 3 ? 2 : 1;
+    return { kind: 'domino', count, band, positions: spread(band, count, dm.w / 2 + 0.125), domino: dm, z: T / 2 };
+  }
+
+  /* ---------- Joints: cut list rows, joinery notes, hardware ---------- */
+
+  const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
+
+  function rowsHelpers(d) {
+    const same = Math.abs(d.wT - d.wB) < 1e-6;
+    return {
+      same,
+      rails(make) {
+        if (same) return [Object.assign({ key: 'rails', name: 'Top & bottom rails', qty: 2, width: d.wT, thick: d.T }, make('top', d.wT))];
+        return [
+          Object.assign({ key: 'top', name: 'Top rail', qty: 1, width: d.wT, thick: d.T }, make('top', d.wT)),
+          Object.assign({ key: 'bottom', name: 'Bottom rail', qty: 1, width: d.wB, thick: d.T }, make('bottom', d.wB)),
+        ];
+      },
+      stiles(props) { return Object.assign({ key: 'stiles', name: 'Stiles (sides)', qty: 2, width: d.ws, thick: d.T }, props); },
+    };
+  }
+
+  function rabbetAfterCard(d, F) {
+    return { title: 'Rabbet', lines: [
+      `Rout the ${F.L(d.R)} wide × ${F.L(d.D)} deep rabbet after glue-up, with a bearing-guided rabbeting bit run clockwise around the back.`,
+      'The bit leaves rounded inside corners. Square them with a chisel so the glass sits flat.',
+    ] };
+  }
+
+  /** The groove in tongue & groove and cope & stick frames shows on the inside edge unless the rabbet removes it. */
+  function grooveShowCheck(d, gw, gd, F, out) {
+    const z1 = (d.T + gw) / 2;                                    // groove's front wall, from the back
+    if (d.R >= gd - 1e-6 && d.D >= z1 - 1e-6) return 'The rabbet removes the groove completely, so nothing shows on the inside edge.';
+    const need = Math.max(z1, d.D);
+    out.warnings.push({ level: 'warn', text: `Part of the groove will show along the inside edge of the frame. A rabbet ${F.L(Math.max(d.R, gd))} wide × ${F.L(need)} deep removes it.` });
+    return `To hide the groove, make the rabbet at least ${F.L(Math.max(d.R, gd))} wide and ${F.L(need)} deep.`;
+  }
+
+  const J = {};
+
+  J.miter = (s, d, p, F, o) => {
+    const { ws, wT, wB, OW, OH, SW, SH, R, T, D } = d;
+    const H = rowsHelpers(d);
+    const rA = w => Math.atan2(ws, w) * DEG;   // rail end, measured from square, where it meets a stile
+    const sA = w => Math.atan2(w, ws) * DEG;   // stile end where it meets a rail w wide
+    const square = Math.abs(wT - ws) < 1e-6 && Math.abs(wB - ws) < 1e-6;
+    o.rows.push(...H.rails((which, w) => ({
+      length: OW, short: SW, atRabbet: square ? SW + 2 * R : null, angles: [rA(w), rA(w)],
+      ends: `${F.A(rA(w))} both ends`,
+    })));
+    const aT = sA(wT), aB = sA(wB);
+    o.rows.push(H.stiles({
+      length: OH, short: SH, atRabbet: square ? SH + 2 * R : null, angles: [aT, aB],
+      ends: Math.abs(aT - aB) < 0.05 ? `${F.A(aT)} both ends` : `${F.A(aT)} top, ${F.A(aB)} bottom`,
+    }));
+    o.lengthNote = 'Lengths are long points, measured along the outside edge.';
+    const miterLines = [];
+    if (square) miterLines.push('Cut every end at 45°. Measure each piece on its long point, the outside edge.');
+    else miterLines.push(`Unequal widths move the miter line off 45° so it still runs corner to corner. Saw settings from square: top rail ${F.A(rA(wT))}, bottom rail ${F.A(rA(wB))}, stiles ${F.A(aT)} at the top and ${F.A(aB)} at the bottom.`);
+    if (square) miterLines.push(`Check on the rabbet: rails should measure ${F.L(SW + 2 * R)} and stiles ${F.L(SH + 2 * R)} along the rabbet edge, the glass size plus ${F.L(d.c)}.`);
+    miterLines.push(`Glue face on each miter: ${F.L(Math.hypot(ws, wT))} long${Math.abs(wT - wB) > 1e-6 ? ` at the top, ${F.L(Math.hypot(ws, wB))} at the bottom` : ''}.`);
+    o.cards.push({ title: 'Miters', lines: miterLines });
+
+    const q = s.qty;
+    if (p.miterReinf === 'keys') {
+      const n = p.keys, kt = p.keyThick, Lk = p.keyLeg, h = Lk / Math.SQRT2;
+      const zs = [];
+      for (let i = 1; i <= n; i++) zs.push(T * i / (n + 1));
+      let worst = Infinity;
+      for (const wr of [wT, wB]) for (const zf of zs) {
+        const inBack = R > 0 && (T - zf) - kt / 2 < D;
+        worst = Math.min(worst, (inBack ? ws + wr - 2 * R : ws + wr) - 0.125);
+      }
+      if (Lk > worst) o.warnings.push({ level: 'warn', text: `Keys showing ${F.L(Lk)} along each edge would cut into the ${worst < ws + Math.min(wT, wB) - 0.2 ? 'rabbet' : 'opening'}. Use ${F.L(niceDown(Math.max(0, worst), s.units))} or smaller.` });
+      if (kt >= T / 2) o.warnings.push({ level: 'warn', text: 'Key slots that thick leave little wood on either side. Keep keys under a third of the stock thickness.' });
+      o.cards.push({ title: 'Corner keys', lines: [
+        `${plural(n, 'key')} per corner, ${F.L(kt)} thick, showing ${F.L(Lk)} along each outside edge.`,
+        `Cut the slots after glue-up on a 45° cradle sled, with the blade ${F.L(h)} above the bottom of the cradle.`,
+        `Center the slot${n > 1 ? 's' : ''} ${zs.map(F.L).join(', ')} from the front face.`,
+        'Orient the key grain along its long edge, across the joint line. Glue in, then trim flush.',
+      ] });
+      const count = 4 * n * q;
+      const leg = Lk + 0.25, stripW = leg / Math.SQRT2;
+      const stripLen = (count + 1) * stripW + count * s.stock.kerf * 1.5;
+      o.materials.push({ name: 'Key stock', qty: count, size: `${F.L(kt)} × ${F.L(stripW)} × ${F.L(stripLen)} strip`, note: 'contrasting wood, grain lengthwise; cut triangles alternately' });
+    } else if (p.miterReinf === 'vnails') {
+      let size = VNAILS_MM[0];
+      for (const v of VNAILS_MM) if (v <= 0.65 * T * MM) size = v;
+      const n = Math.min(ws, wT, wB) - R >= 1.25 ? 2 : 1;
+      o.cards.push({ title: 'V-nails', lines: [
+        `Glue the miters in a band clamp, then drive ${plural(n, 'V-nail')} (${size} mm) into each corner from the back.`,
+        `Keep them on the solid part of the back, outside the ${F.L(R)} rabbet.`,
+        'Use hardwood V-nails for oak, maple and other dense woods.',
+      ] });
+      o.materials.push({ name: `V-nails, ${size} mm`, qty: 4 * n * q, size: '', note: 'hardwood type for dense species' });
+    } else if (p.miterReinf === 'biscuits') {
+      const lip = T - D;
+      const avail = Math.hypot(ws, Math.min(wT, wB));
+      const b = BISCUITS.find(x => x.len + 0.25 <= avail);
+      if (lip < 0.3) o.warnings.push({ level: 'warn', text: `The lip in front of the rabbet is ${F.L(lip)} thick, too thin for a biscuit slot. Use corner keys or V-nails instead.` });
+      if (!b) o.warnings.push({ level: 'warn', text: 'The miter face is too short for even an FF biscuit. Use corner keys or V-nails instead.' });
+      else {
+        o.cards.push({ title: 'Biscuits', lines: [
+          `One ${b.name} biscuit per corner, centered on the miter face.`,
+          `Center the slot ${F.L(lip / 2)} from the front face so it stays in the solid lip, clear of the rabbet.`,
+          b.name === 'FF' ? 'FF biscuits need a joiner with a small (face frame) blade.' : 'Clamp the frame in a band clamp while the glue sets.',
+        ] });
+        o.materials.push({ name: `Biscuits, ${b.name}`, qty: 4 * q, size: '', note: '' });
+      }
+    } else {
+      o.cards.push({ title: 'Glue only', lines: [
+        'Glue holds end grain poorly. Size the miters with thin glue first, let it tack, then glue up in a band clamp.',
+        'Fine for small frames with a firm backer; reinforce anything larger.',
+      ] });
+      if (OW + OH > 32) o.warnings.push({ level: 'warn', text: 'A glue-only miter is weak at this size. Add corner keys, V-nails or biscuits.' });
+    }
+  };
+
+  J.halflap = (s, d, p, F, o) => {
+    const { ws, wT, wB, OW, OH, T } = d;
+    const H = rowsHelpers(d);
+    const dd = p.lapDepth;
+    const thr = p.thr;
+    if (dd <= 0.0625 || dd >= T - 0.0625) o.warnings.push({ level: 'error', text: `Lap depth must be between 1/16" and ${F.L(T - 0.0625)}.` });
+    const railFace = thr ? `from the back, ${F.L(dd)} deep` : `from the front, ${F.L(T - dd)} deep`;
+    const stileFace = thr ? `from the front, ${F.L(T - dd)} deep` : `from the back, ${F.L(dd)} deep`;
+    o.rows.push(...H.rails(() => ({ length: OW, angles: [0, 0], ends: 'Square', notes: `Lap ${F.L(ws)} long each end, ${railFace}` })));
+    o.rows.push(H.stiles({ length: OH, angles: [0, 0], ends: 'Square',
+      notes: Math.abs(wT - wB) < 1e-6 ? `Lap ${F.L(wT)} long each end, ${stileFace}` : `Laps ${F.L(wT)} top, ${F.L(wB)} bottom, ${stileFace}` }));
+    o.lengthNote = 'Every piece runs the full outside length.';
+    const tn = thr ? 'rails' : 'stiles', on = thr ? 'stiles' : 'rails';
+    o.cards.push({ title: 'Laps', lines: [
+      `The ${tn} show on the front, running through to the corners. Cut their laps from the back, ${F.L(dd)} deep.`,
+      `Cut the ${on}' laps from the front, ${F.L(T - dd)} deep.`,
+      'Each lap is as long as the mating piece is wide. Set a stop block and nibble the waste with a dado stack or repeated kerfs.',
+      `Test in scrap first: the two laps together must equal the stock thickness, ${F.L(T)}.`,
+    ] });
+    o.cards.push(rabbetAfterCard(d, F));
+  };
+
+  J.mitredlap = (s, d, p, F, o) => {
+    const { ws, wT, wB, OW, OH, T } = d;
+    const H = rowsHelpers(d);
+    const dd = p.lapDepth;
+    if (dd <= 0.0625 || dd >= T - 0.0625) o.warnings.push({ level: 'error', text: `Back lap thickness must be between 1/16" and ${F.L(T - 0.0625)}.` });
+    const rA = w => Math.atan2(ws, w) * DEG, sA = w => Math.atan2(w, ws) * DEG;
+    o.rows.push(...H.rails((which, w) => ({ length: OW, angles: [0, 0], ends: `Square blank, ${F.A(rA(w))} miter on the face`,
+      notes: `Back ${F.L(dd)} cut away for ${F.L(ws)} at each end` })));
+    o.rows.push(H.stiles({ length: OH, angles: [0, 0], ends: 'Square blank',
+      notes: `Front ${F.L(T - dd)} cut away to a ${F.A(sA(wT))}${Math.abs(wT - wB) > 1e-6 ? `/${F.A(sA(wB))}` : ''} miter shoulder` }));
+    o.lengthNote = 'Every piece runs the full outside length.';
+    o.cards.push({ title: 'Mitered laps', lines: [
+      `Rails: remove the back ${F.L(dd)} for ${F.L(ws)} at each end with a square shoulder, then miter the front part at ${F.A(rA(wT))} from square.`,
+      `Stiles: remove the front ${F.L(T - dd)} at each end, with the shoulder cut on the miter line (${F.A(sA(wT))} from square), leaving the back ${F.L(dd)} full length.`,
+      'Cut the angled shoulder with a saw guided by a miter block, then pare the cheek flat.',
+      'From the front it reads as a miter; from the back it shows the stiles running through.',
+    ] });
+    o.cards.push(rabbetAfterCard(d, F));
+  };
+
+  J.bridle = (s, d, p, F, o) => {
+    const { ws, wT, wB, OW, OH, T } = d;
+    const H = rowsHelpers(d);
+    const t = p.tenonThick, cheek = (T - t) / 2;
+    const thr = p.thr;
+    if (t <= 0 || t >= T - 0.125) o.warnings.push({ level: 'error', text: 'The tenon is too thick for the stock. Use about a third of the thickness.' });
+    else if (t < T / 4 - 1e-6 || t > T / 2 + 1e-6) o.warnings.push({ level: 'warn', text: `A bridle tenon is usually about a third of the stock thickness (${F.L(T / 3)}).` });
+    const sameRails = Math.abs(wT - wB) < 1e-6;
+    if (!thr) {
+      o.rows.push(...H.rails(() => ({ length: OW, angles: [0, 0], ends: 'Square', notes: `Tenon ${F.L(t)} thick × ${F.L(ws)} long each end` })));
+      o.rows.push(H.stiles({ length: OH, angles: [0, 0], ends: 'Square',
+        notes: sameRails ? `Open slot ${F.L(t)} wide × ${F.L(wT)} deep each end` : `Open slots ${F.L(t)} wide: ${F.L(wT)} deep top, ${F.L(wB)} bottom` }));
+    } else {
+      o.rows.push(...H.rails(() => ({ length: OW, angles: [0, 0], ends: 'Square', notes: `Open slot ${F.L(t)} wide × ${F.L(ws)} deep each end` })));
+      o.rows.push(H.stiles({ length: OH, angles: [0, 0], ends: 'Square',
+        notes: sameRails ? `Tenon ${F.L(t)} thick × ${F.L(wT)} long each end` : `Tenons ${F.L(t)} thick: ${F.L(wT)} long top, ${F.L(wB)} bottom` }));
+    }
+    o.lengthNote = 'Every piece runs the full outside length.';
+    const slotted = thr ? 'rails' : 'stiles', tenoned = thr ? 'stiles' : 'rails';
+    o.cards.push({ title: 'Slots and tenons', lines: [
+      `Cut the open slots in the ${slotted} first, centered in the thickness: ${F.L(t)} wide with ${F.L(cheek)} cheeks.`,
+      `Then cut the cheeks off the ${tenoned} with a tenoning jig or dado stack, sneaking up on a snug fit in the slot.`,
+      'Tenon length equals the width of the slotted piece. Cut it a hair long and plane the end grain flush after glue-up.',
+    ] });
+    o.cards.push(rabbetAfterCard(d, F));
+  };
+
+  J.mortise = (s, d, p, F, o) => {
+    const { ws, wT, wB, OW, OH, T, R, D } = d;
+    const H = rowsHelpers(d);
+    const t = p.tenonThick, tl = p.tenonLen, so = p.shoulderOut, si = p.shoulderIn, horn = p.horn;
+    const thr = p.thr;
+    const mDepth = tl + 0.0625;
+    const cheek = (T - t) / 2;
+    if (t <= 0 || t >= T - 0.125) o.warnings.push({ level: 'error', text: 'The tenon is too thick for the stock. Use about a third of the thickness.' });
+    let shoulder, tws;
+    if (!thr) {
+      shoulder = OW - 2 * ws;
+      if (tl >= ws - 0.125) o.warnings.push({ level: 'error', text: `A ${F.L(tl)} tenon nearly goes through a ${F.L(ws)} stile. Shorten it to about ${F.L(nice(ws * 2 / 3, s.units))}.` });
+      o.rows.push(...H.rails((which, w) => ({ length: shoulder + 2 * tl, shoulder, angles: [0, 0], ends: 'Tenon both ends',
+        notes: `Tenons ${F.L(t)} thick × ${F.L(w - so - si)} wide × ${F.L(tl)} long` })));
+      tws = [wT - so - si, wB - so - si];
+      o.rows.push(H.stiles({ length: OH + 2 * horn, angles: [0, 0], ends: horn ? `Square, ${F.L(horn)} horns` : 'Square',
+        notes: `Mortises ${F.L(t)} wide × ${F.L(mDepth)} deep, ${Math.abs(tws[0] - tws[1]) < 1e-6 ? `${F.L(tws[0])} long` : `${F.L(tws[0])} top, ${F.L(tws[1])} bottom`}` }));
+    } else {
+      shoulder = OH - wT - wB;
+      if (tl >= Math.min(wT, wB) - 0.125) o.warnings.push({ level: 'error', text: `A ${F.L(tl)} tenon nearly goes through the ${F.L(Math.min(wT, wB))} rail. Shorten it.` });
+      tws = [ws - so - si];
+      o.rows.push(...H.rails(() => ({ length: OW + 2 * horn, angles: [0, 0], ends: horn ? `Square, ${F.L(horn)} horns` : 'Square',
+        notes: `Mortises ${F.L(t)} wide × ${F.L(mDepth)} deep × ${F.L(tws[0])} long` })));
+      o.rows.push(H.stiles({ length: shoulder + 2 * tl, shoulder, angles: [0, 0], ends: 'Tenon both ends',
+        notes: `Tenons ${F.L(t)} thick × ${F.L(tws[0])} wide × ${F.L(tl)} long` }));
+    }
+    if (Math.min(...tws) < 0.375) o.warnings.push({ level: 'error', text: 'The tenons are too narrow once the shoulders are taken off. Reduce the shoulders or widen the members.' });
+    if (R > 0 && D > cheek + 1e-6 && si < R - 1e-6) o.warnings.push({ level: 'warn', text: `Routing the rabbet will cut into the tenons. Make the inner shoulder at least ${F.L(R)}.` });
+    o.lengthNote = 'Tenoned pieces include both tenons.';
+    const tm = thr ? 'rails' : 'stiles', tn = thr ? 'stiles' : 'rails';
+    const lines = [
+      `Shoulder to shoulder on the ${tn}: ${F.L(shoulder)}.`,
+      `Lay out each mortise ${F.L(horn + so)} from the end of the ${tm.slice(0, -1)}, centered in the thickness (${F.L(cheek)} walls).`,
+      `Chop or drill the mortises ${F.L(mDepth)} deep (1/16" deeper than the tenon for glue), then saw the tenons to fit them.`,
+      `Tenon shoulders: ${F.L(so)} on the outer edge so the mortise doesn't break out the end, ${F.L(si)} on the inner edge.`,
+    ];
+    if (horn > 0) lines.push(`The ${tm} are cut ${F.L(horn)} long at each end (horns) so the mortise walls don't split. Saw them flush after glue-up.`);
+    o.cards.push({ title: 'Mortises and tenons', lines });
+    o.cards.push(rabbetAfterCard(d, F));
+  };
+
+  function grooveFrame(s, d, p, F, o, depth, gw, kind) {
+    const { ws, wT, wB, OW, OH, T } = d;
+    const H = rowsHelpers(d);
+    const thr = p.thr;
+    if (gw >= T - 0.1875) o.warnings.push({ level: 'error', text: 'The groove is too wide for the stock. Keep it near a third of the thickness.' });
+    if (depth >= Math.min(ws, wT, wB) / 2) o.warnings.push({ level: 'warn', text: 'The groove goes more than halfway into the narrowest member. Make it shallower.' });
+    const tongue = kind === 'cope' ? 'Coped ends' : 'Tongues';
+    let shoulder;
+    if (!thr) {
+      shoulder = OW - 2 * ws;
+      o.rows.push(...H.rails(() => ({ length: shoulder + 2 * depth, shoulder, angles: [0, 0], ends: kind === 'cope' ? 'Coped both ends' : 'Tongue both ends',
+        notes: `${tongue} ${F.L(gw)} thick × ${F.L(depth)} long; groove inside edge` })));
+      o.rows.push(H.stiles({ length: OH, angles: [0, 0], ends: 'Square', notes: `Groove ${F.L(gw)} × ${F.L(depth)} along the inside edge` }));
+    } else {
+      shoulder = OH - wT - wB;
+      o.rows.push(...H.rails(() => ({ length: OW, angles: [0, 0], ends: 'Square', notes: `Groove ${F.L(gw)} × ${F.L(depth)} along the inside edge` })));
+      o.rows.push(H.stiles({ length: shoulder + 2 * depth, shoulder, angles: [0, 0], ends: kind === 'cope' ? 'Coped both ends' : 'Tongue both ends',
+        notes: `${tongue} ${F.L(gw)} thick × ${F.L(depth)} long; groove inside edge` }));
+    }
+    o.lengthNote = `${thr ? 'Stiles' : 'Rails'} include ${F.L(depth)} at each end that goes into the groove.`;
+    return shoulder;
+  }
+
+  J.tongue = (s, d, p, F, o) => {
+    const gw = p.grooveW, gd = p.grooveD, T = d.T;
+    const shoulder = grooveFrame(s, d, p, F, o, gd, gw, 'tongue');
+    const tn = p.thr ? 'stiles' : 'rails';
+    o.cards.push({ title: 'Groove and tongues', lines: [
+      `Groove every inside edge ${F.L(gw)} wide × ${F.L(gd)} deep, centered (${F.L((T - gw) / 2)} from each face). Flip the piece between passes to center it exactly.`,
+      `Cut tongues on the ends of the ${tn} with the same fence setting: ${F.L(gw)} thick × ${F.L(gd)} long. Shoulder to shoulder: ${F.L(shoulder)}.`,
+      'The groove runs out through the ends of the through pieces; it is hidden once the frame is glued.',
+      grooveShowCheck(d, gw, gd, F, o),
+    ] });
+    o.cards.push(rabbetAfterCard(d, F));
+  };
+
+  J.cope = (s, d, p, F, o) => {
+    const cd = p.copeD, gw = p.grooveW;
+    const shoulder = grooveFrame(s, d, p, F, o, cd, gw, 'cope');
+    const tn = p.thr ? 'stiles' : 'rails';
+    o.cards.push({ title: 'Cope and stick', lines: [
+      `Cope the ends of the ${tn} first, face down, with a backer block behind them to stop tear-out. Shoulder to shoulder: ${F.L(shoulder)}.`,
+      'Then run the stick (profile) bit along every inside edge.',
+      `This cut list assumes a cope depth of ${F.L(cd)}. Check yours on a test piece by measuring from the end to the shoulder; most sets cut 3/8" (9.5 mm).`,
+      'A glass-door set cuts a rabbet instead of a groove; otherwise rout the rabbet after glue-up.',
+      grooveShowCheck(d, gw, cd, F, o),
+    ] });
+    o.cards.push(rabbetAfterCard(d, F));
+  };
+
+  J.butt = (s, d, p, F, o) => {
+    const { ws, wT, wB, OW, OH, T, R } = d;
+    const H = rowsHelpers(d);
+    const thr = p.thr;
+    if (!thr) {
+      o.rows.push(...H.rails(() => ({ length: OW - 2 * ws, angles: [0, 0], ends: 'Square' })));
+      o.rows.push(H.stiles({ length: OH, angles: [0, 0], ends: 'Square' }));
+    } else {
+      o.rows.push(...H.rails(() => ({ length: OW, angles: [0, 0], ends: 'Square' })));
+      o.rows.push(H.stiles({ length: OH - wT - wB, angles: [0, 0], ends: 'Square' }));
+    }
+    o.lengthNote = thr ? 'Rails run the full width; stiles fit between them.' : 'Stiles run the full height; rails fit between them.';
+    const joinW = thr ? [ws, ws] : [wT, wB];         // top joints, bottom joints
+    const plans = joinW.map(w => fastenerPlan(d, p, w));
+    const wThrough = thr ? Math.min(wT, wB) : ws;
+    const tn = thr ? 'rails' : 'stiles', jn = thr ? 'stiles' : 'rails';
+    const q = s.qty;
+    const perJoint = plans[0].count === plans[1].count ? `${plural(plans[0].count, 'per joint', 'per joint')}`.replace(/^1 per joint$/, 'one per joint') : '';
+    const posText = pl => pl.positions.map(F.L).join(' and ');
+    const total = (plans[0].count + plans[1].count) * 2;
+    if (p.buttReinf === 'dowels') {
+      const hd = p.dowelLen / 2 + 0.0625;
+      if (hd >= wThrough - 0.125) o.warnings.push({ level: 'warn', text: `Dowel holes ${F.L(hd)} deep nearly go through the ${F.L(wThrough)} ${tn}. Use shorter dowels.` });
+      const cnt = plans[0].count === plans[1].count ? `${plans[0].count} per joint` : `${plans[0].count} per joint at the top, ${plans[1].count} at the bottom`;
+      o.cards.push({ title: 'Dowels', lines: [
+        `${F.L(p.dowelDia)} × ${F.L(p.dowelLen)} dowels, ${cnt}.`,
+        `Drill ${F.L(hd)} deep into the ends of the ${jn} and the edges of the ${tn}, centered ${F.L(T / 2)} from the face.`,
+        `Hole centers from the outer edge: ${posText(plans[0])}${plans[1].positions.join() !== plans[0].positions.join() ? ` at the top, ${posText(plans[1])} at the bottom` : ''}.`,
+        'A self-centering doweling jig keeps the holes aligned on both pieces.',
+      ] });
+      o.materials.push({ name: `Dowels ${F.L(p.dowelDia)} × ${F.L(p.dowelLen)}`, qty: total * q, size: '', note: 'fluted' });
+    } else if (p.buttReinf === 'biscuits') {
+      const bad = plans.some(pl => !pl.biscuit);
+      if (bad) o.warnings.push({ level: 'warn', text: `The ${jn} are too narrow for biscuits${R ? ' once the rabbet is allowed for' : ''}. Use dowels, a loose tenon or pocket screws.` });
+      else {
+        const names = [...new Set(plans.map(pl => pl.biscuit.name))].join(' / ');
+        o.cards.push({ title: 'Biscuits', lines: [
+          `One ${names} biscuit per joint, slot centered ${F.L(plans[0].band / 2)} from the outer edge.`,
+          `Set the slot ${F.L(T - plans[0].z)} down from the front face${R ? ' so the rabbet misses it' : ''}.`,
+          'Biscuits mostly align the joint; the long-grain to end-grain glue line is still the weak point.',
+        ] });
+        o.materials.push({ name: `Biscuits, ${names}`, qty: 4 * q, size: '', note: '' });
+      }
+    } else if (p.buttReinf === 'pocket') {
+      const sc = plans[0].screw;
+      o.cards.push({ title: 'Pocket screws', lines: [
+        `Drill pocket holes in the back of the ${jn} near each end, set for ${F.L(T)} stock: ${plans[0].count === plans[1].count ? `${plans[0].count} per joint` : `${plans[0].count} at the top, ${plans[1].count} at the bottom`}.`,
+        `Keep the holes within ${F.L(plans[0].band)} of the outer edge so the rabbet misses them. Centers: ${posText(plans[0])}.`,
+        `Screws: ${F.L(sc)} pocket screws, coarse thread for softwood, fine for hardwood. Clamp flat while driving.`,
+        'The holes show on the back. Plug them if the back will be seen.',
+      ] });
+      o.materials.push({ name: `Pocket screws ${F.L(sc)}`, qty: total * q, size: '', note: '' });
+    } else {
+      const dm = plans[0].domino;
+      o.cards.push({ title: 'Loose tenons', lines: [
+        `${dm.name} loose tenons (Domino), ${plans[0].count === plans[1].count ? `${plans[0].count} per joint` : `${plans[0].count} at the top, ${plans[1].count} at the bottom`}.`,
+        `Mortise ${F.L(dm.len / 2 + 0.04)} deep into each piece, centered ${F.L(T / 2)} from the face; ${posText(plans[0])} from the outer edge.`,
+        'Cut one side at the tight width setting and the other a size wider for adjustment.',
+      ] });
+      o.materials.push({ name: `Loose tenons ${dm.name}`, qty: total * q, size: '', note: '' });
+    }
+    o.cards.push(rabbetAfterCard(d, F));
+    void perJoint;
+  };
+
+  /* ---------- Materials, steps ---------- */
+
+  function addMaterials(s, d, p, F, o) {
+    const q = s.qty;
+    const glass = `${F.L(d.GW)} × ${F.L(d.GH)}`;
+    const base = [
+      { name: 'Glass or acrylic', qty: q, size: glass, note: `rabbet opening ${F.L(d.RW)} × ${F.L(d.RH)} less ${F.L(d.c)}` },
+    ];
+    if (s.mat.on) base.push({ name: 'Mat board', qty: q, size: glass, note: `window ${F.L(d.MW)} × ${F.L(d.MH)}, borders ${F.L(s.mat.side)} sides, ${F.L(s.mat.top)} top, ${F.L(s.mat.bottom)} bottom` });
+    base.push({ name: 'Backing board', qty: q, size: glass, note: 'foam board, hardboard or acid-free board' });
+    const pts = 2 * Math.max(2, Math.ceil(d.RW / 6)) + 2 * Math.max(2, Math.ceil(d.RH / 6));
+    base.push({ name: 'Glazier or flexible points', qty: pts * q, size: '', note: 'about every 6"' });
+    base.push({ name: 'D-rings', qty: 2 * q, size: '', note: `${F.L(d.OH / 3)} down from the top, on the stiles` });
+    o.materials.unshift(...base);
+  }
+
+  function buildSteps(s, d, p, F, o) {
+    const st = [];
+    const { ws, wT, wB, T, R, D } = d;
+    const allSame = Math.abs(wT - ws) < 1e-6 && Math.abs(wB - ws) < 1e-6;
+    st.push(`Mill the stock flat and square to ${F.L(T)} thick, then rip it to width: ${allSame ? F.L(ws) : `stiles ${F.L(ws)}, top rail ${F.L(wT)}, bottom rail ${F.L(wB)}`}.`);
+    const j = s.joint;
+    if (j === 'miter') {
+      if (R > 0) st.push(`Cut the ${F.L(R)} × ${F.L(D)} rabbet along one edge of each strip before cutting the pieces, in two passes on the table saw or with a rabbeting bit.`);
+      st.push(s.stock.grain ? 'Cut the pieces in order around the frame (top, side, bottom, side) from one strip so the grain wraps the corners. Miter one end, mark the long point, then cut the other end.' : 'Miter one end of each piece, mark its long point, then cut the other end.');
+      st.push('Dry-fit in a band clamp. Fix any gap by trimming on a shooting board or miter sled; make both pieces of each pair identical.');
+      if (p.miterReinf === 'keys') st.push(`Glue up in a band clamp. Once cured, cut the key slots on a 45° cradle sled (blade ${F.L(p.keyLeg / Math.SQRT2)} high), glue in the keys and trim them flush.`);
+      else if (p.miterReinf === 'vnails') st.push('Glue up in a band clamp and drive the V-nails from the back while it is clamped.');
+      else if (p.miterReinf === 'biscuits') st.push('Cut a biscuit slot in each miter face, then glue up with the biscuits in a band clamp.');
+      else st.push('Size the end grain with thin glue, let it tack, then glue up in a band clamp.');
+    } else {
+      st.push('Cut every piece to length with a stop block so matching pieces are identical.');
+      if (j === 'halflap') st.push(`Cut the laps with a dado stack or repeated kerfs: ${F.L(p.lapDepth)} deep from the back of the ${p.thr ? 'rails' : 'stiles'}, ${F.L(T - p.lapDepth)} deep from the front of the ${p.thr ? 'stiles' : 'rails'}.`);
+      if (j === 'mitredlap') st.push(`Cut the rails' back laps (${F.L(p.lapDepth)} deep) and miter their fronts, then saw the stiles' front laps to an angled shoulder. Pare until the miter closes.`);
+      if (j === 'bridle') st.push(`Cut the slots (${F.L(p.tenonThick)} wide), then cut the tenons to fit them.`);
+      if (j === 'mortise') st.push(`Cut the mortises (${F.L(p.tenonThick)} wide × ${F.L(p.tenonLen + 0.0625)} deep), then saw and pare the tenons to fit.`);
+      if (j === 'tongue') st.push(`Groove every inside edge (${F.L(p.grooveW)} × ${F.L(p.grooveD)}), then cut the tongues with the same fence setting.`);
+      if (j === 'cope') st.push('Cope the rail ends with a backer block, then stick every inside edge.');
+      if (j === 'butt') {
+        const label = { dowels: 'Drill the dowel holes with a doweling jig.', biscuits: 'Cut the biscuit slots.', pocket: 'Drill the pocket holes in the back of the joining pieces.', domino: 'Cut the loose-tenon mortises.' }[p.buttReinf];
+        st.push(label);
+      }
+      st.push(`Dry-fit, then glue up. Check that the diagonals match (${F.L(d.diag)} corner to corner on the outside).`);
+      if (R > 0) st.push(`Rout the ${F.L(R)} × ${F.L(D)} rabbet around the back and square the corners with a chisel.`);
+    }
+    st.push('Sand and finish.');
+    st.push(`Fit the glass, ${s.mat.on ? 'mat, ' : ''}artwork and backer, and hold them with points. Add D-rings and wire ${F.L(d.OH / 3)} down from the top.`);
+    o.steps = st;
+  }
+
+  /* ---------- Stock layout ---------- */
+
+  function frameCuts(rows) {
+    const top = rows.find(r => r.key === 'top' || r.key === 'rails');
+    const bot = rows.find(r => r.key === 'bottom' || r.key === 'rails');
+    const st = rows.find(r => r.key === 'stiles');
+    if (!top || !bot || !st) return [];
+    const c = (label, r, flip) => ({ label, length: r.length, width: r.width,
+      angles: flip ? [(r.angles || [0, 0])[1], (r.angles || [0, 0])[0]] : (r.angles || [0, 0]).slice() });
+    return [c('Top', top), c('Side', st), c('Bottom', bot), c('Side', st, true)];
+  }
+
+  function layoutStock(cuts, s, d) {
+    const L = s.stock.length, k = Math.max(0, s.stock.kerf), trim = Math.max(0, s.stock.trim);
+    const usable = L - trim;
+    const groups = [];
+    for (let f = 0; f < s.qty; f++) {
+      cuts.forEach((c, i) => {
+        const a = Math.min(60, Math.max(...c.angles.map(Math.abs)));
+        const it = Object.assign({}, c, { frame: f, seq: i, allow: k / Math.cos(a / DEG) });
+        let g = groups.find(x => Math.abs(x.width - it.width) < 1e-6);
+        if (!g) groups.push(g = { width: it.width, thick: d.T, items: [], boards: [] });
+        g.items.push(it);
+      });
+    }
+    for (const g of groups) {
+      const boards = g.boards;
+      const fresh = () => { const b = { cuts: [], used: 0, over: false }; boards.push(b); return b; };
+      const fits = (b, it) => !b.over && b.used + it.length <= usable + 1e-9;
+      const put = (b, it) => { b.cuts.push(Object.assign({}, it, { start: trim + b.used })); b.used += it.length + it.allow; };
+      const overflow = it => { const b = fresh(); b.over = true; put(b, it); };
+      if (s.stock.grain) {
+        let cur = null;
+        for (let f = 0; f < s.qty; f++) {
+          const seq = g.items.filter(it => it.frame === f);
+          const need = seq.reduce((a, it) => a + it.length + it.allow, 0) - (seq.length ? seq[seq.length - 1].allow : 0);
+          if (cur && cur.used + need > usable + 1e-9 && need <= usable + 1e-9) cur = null;
+          for (const it of seq) {
+            if (it.length > usable + 1e-9) { overflow(it); continue; }
+            if (!cur || !fits(cur, it)) cur = fresh();
+            put(cur, it);
+          }
+        }
+      } else {
+        const sorted = g.items.slice().sort((a, b) => b.length - a.length);
+        for (const it of sorted) {
+          if (it.length > usable + 1e-9) { overflow(it); continue; }
+          put(boards.find(b => fits(b, it)) || fresh(), it);
+        }
+      }
+      for (const b of boards) b.remainder = b.over ? 0 : Math.max(0, usable - b.used);
+      g.linear = g.items.reduce((a, it) => a + it.length, 0);
+      g.boardFeet = boards.length * d.T * g.width * L / 144;
+    }
+    const totalBoards = groups.reduce((a, g) => a + g.boards.length, 0);
+    const linear = groups.reduce((a, g) => a + g.linear, 0);
+    const maxW = Math.max(d.ws, d.wT, d.wB);
+    return {
+      groups, boardLength: L, usable, kerf: k, trim, totalBoards, linear,
+      waste: totalBoards ? Math.max(0, 1 - linear / (totalBoards * L)) : 0,
+      over: groups.some(g => g.boards.some(b => b.over)),
+      moldingRule: s.qty * (2 * (d.OW + d.OH) + 8 * maxW),
+    };
+  }
+
+  /* ---------- Entry point ---------- */
+
+  function compute(input) {
+    const s = normalizeState(input);
+    const F = makeFmt(s);
+    const d = solve(s, F);
+    const p = resolveParams(s, d);
+    const out = { state: s, dims: d, params: p, joint: JOINT_BY_ID[s.joint], fmt: F,
+      rows: [], cards: [], materials: [], steps: [], warnings: d.warnings.slice(), cuts: [], layout: null, lengthNote: '' };
+    out.ok = !out.warnings.some(w => w.level === 'error');
+    if (!out.ok) return out;
+    J[s.joint](s, d, p, F, out);
+    addMaterials(s, d, p, F, out);
+    buildSteps(s, d, p, F, out);
+    for (const r of out.rows) r.qtyTotal = r.qty * s.qty;
+    out.cuts = frameCuts(out.rows);
+    out.layout = layoutStock(out.cuts, s, d);
+    if (out.layout.over) out.warnings.push({ level: 'warn', text: `Some pieces are longer than your ${F.L(s.stock.length)} boards. Use longer stock or split the frame.` });
+    out.ok = !out.warnings.some(w => w.level === 'error');
+    return out;
+  }
+
+  return {
+    MM, DEG, JOINTS, JOINT_BY_ID, BISCUITS, DOMINOS,
+    defaultState, normalizeState, compute, solve, resolveParams,
+    fmtLen, fmtAngle, parseLen, makeFmt, nice,
+    fastenerPlan, bandFor, spread,
+  };
+});
+</script>
+<script>
+/* Framewright geometry: convex solids, plane clipping (enough CSG to cut joints)
+   and the 3D model of a frame for each joint type.
+   World axes: x to the right, y up, z toward the viewer. The frame's back is z = 0,
+   its front z = T, and the outside corner at bottom left is the origin. */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./core.js'));
+  else root.FWGeom = factory(root.FWCore);
+})(typeof self !== 'undefined' ? self : this, function (Core) {
+  'use strict';
+
+  const E = 1e-7;
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const norm = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+  const neg = a => [-a[0], -a[1], -a[2]];
+  const near = (a, b, t) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) <= t;
+
+  function newell(f) {
+    let x = 0, y = 0, z = 0;
+    for (let i = 0; i < f.length; i++) {
+      const a = f[i], b = f[(i + 1) % f.length];
+      x += (a[1] - b[1]) * (a[2] + b[2]);
+      y += (a[2] - b[2]) * (a[0] + b[0]);
+      z += (a[0] - b[0]) * (a[1] + b[1]);
+    }
+    return [x, y, z];
+  }
+  function faceArea(f) { const n = newell(f); return Math.hypot(n[0], n[1], n[2]) / 2; }
+  function centroid(P) {
+    let x = 0, y = 0, z = 0, n = 0;
+    for (const f of P.faces) for (const p of f) { x += p[0]; y += p[1]; z += p[2]; n++; }
+    return [x / n, y / n, z / n];
+  }
+  function bbox(P) {
+    const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+    for (const f of P.faces) for (const p of f) {
+      for (let i = 0; i < 3; i++) { if (p[i] < b[i]) b[i] = p[i]; if (p[i] > b[i + 3]) b[i + 3] = p[i]; }
+    }
+    return b;
+  }
+  function overlap(a, b) {
+    return a[0] < b[3] - E && b[0] < a[3] - E && a[1] < b[4] - E && b[1] < a[4] - E && a[2] < b[5] - E && b[2] < a[5] - E;
+  }
+  function volume(P) {
+    const c = centroid(P);
+    let v = 0;
+    for (const f of P.faces) {
+      const nn = newell(f);
+      const l = Math.hypot(nn[0], nn[1], nn[2]);
+      if (l < 1e-12) continue;
+      v += (l / 2) * Math.abs(dot([nn[0] / l, nn[1] / l, nn[2] / l], sub(f[0], c))) / 3;
+    }
+    return v;
+  }
+
+  function dedupeLoop(pts) {
+    const out = [];
+    for (const p of pts) if (!out.length || !near(p, out[out.length - 1], 1e-7)) out.push(p);
+    while (out.length > 1 && near(out[0], out[out.length - 1], 1e-7)) out.pop();
+    return out;
+  }
+  function uniq(pts) {
+    const out = [];
+    for (const p of pts) if (!out.some(q => near(p, q, 1e-6))) out.push(p);
+    return out;
+  }
+  function orderOnPlane(pts, n) {
+    if (pts.length < 3) return pts;
+    const c = [0, 0, 0];
+    for (const p of pts) { c[0] += p[0]; c[1] += p[1]; c[2] += p[2]; }
+    c[0] /= pts.length; c[1] /= pts.length; c[2] /= pts.length;
+    const u = norm(cross(n, Math.abs(n[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0]));
+    const v = cross(n, u);
+    return pts.map(p => { const d = sub(p, c); return { p, a: Math.atan2(dot(d, v), dot(d, u)) }; })
+      .sort((a, b) => a.a - b.a).map(o => o.p);
+  }
+
+  /** Keep the part of convex solid P where n·p <= d. Returns P itself, a new solid, or null. */
+  function clip(P, n, d) {
+    let out = false, inn = false;
+    for (const f of P.faces) for (const p of f) {
+      const s = dot(n, p) - d;
+      if (s > E) out = true; else if (s < -E) inn = true;
+    }
+    if (!out) return P;
+    if (!inn) return null;
+    const faces = [], cap = [];
+    for (const f of P.faces) {
+      const res = [];
+      for (let i = 0; i < f.length; i++) {
+        const a = f[i], b = f[(i + 1) % f.length];
+        const sa = dot(n, a) - d, sb = dot(n, b) - d;
+        if (sa <= E) { res.push(a); if (sa >= -E) cap.push(a); }
+        if ((sa < -E && sb > E) || (sa > E && sb < -E)) {
+          const t = sa / (sa - sb);
+          const q = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+          res.push(q); cap.push(q);
+        }
+      }
+      const r = dedupeLoop(res);
+      if (r.length >= 3 && faceArea(r) > 1e-10) faces.push(r);
+    }
+    const c = orderOnPlane(uniq(cap), n);
+    if (c.length >= 3 && faceArea(c) > 1e-10) faces.push(c);
+    if (faces.length < 4) return null;
+    const Q = Object.assign({}, P, { faces });
+    delete Q._planes;
+    return volume(Q) > 1e-9 ? Q : null;
+  }
+
+  function planesOf(C) {
+    const c = centroid(C);
+    const out = [];
+    for (const f of C.faces) {
+      const nn = newell(f);
+      if (Math.hypot(nn[0], nn[1], nn[2]) < 1e-12) continue;
+      let n = norm(nn), d = dot(n, f[0]);
+      if (dot(n, c) > d) { n = neg(n); d = -d; }
+      out.push({ n, d });
+    }
+    return out;
+  }
+
+  /** P minus convex cutter C, as a list of convex pieces. */
+  function subtract(P, C) {
+    if (!overlap(bbox(P), C._bb || (C._bb = bbox(C)))) return [P];
+    const planes = C._planes || (C._planes = planesOf(C));
+    const out = [];
+    let rest = P;
+    for (const pl of planes) {
+      const o = clip(rest, neg(pl.n), -pl.d);
+      if (o) out.push(o);
+      rest = clip(rest, pl.n, pl.d);
+      if (!rest) return out;
+    }
+    return out;
+  }
+
+  function translate(P, v) {
+    return Object.assign({}, P, { faces: P.faces.map(f => f.map(p => [p[0] + v[0], p[1] + v[1], p[2] + v[2]])) });
+  }
+
+  /* ---------- Solid constructors ---------- */
+
+  function fromCaps(bot, top) {
+    const faces = [bot, top];
+    for (let i = 0; i < bot.length; i++) {
+      const j = (i + 1) % bot.length;
+      faces.push([bot[i], bot[j], top[j], top[i]]);
+    }
+    return { faces };
+  }
+  function clean2(pts) {
+    const out = [];
+    for (const p of pts) if (!out.length || Math.abs(p[0] - out[out.length - 1][0]) + Math.abs(p[1] - out[out.length - 1][1]) > 1e-9) out.push(p);
+    while (out.length > 1 && Math.abs(out[0][0] - out[out.length - 1][0]) + Math.abs(out[0][1] - out[out.length - 1][1]) <= 1e-9) out.pop();
+    return out;
+  }
+  function box(x0, x1, y0, y1, z0, z1) {
+    return prism([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], z0, z1, 'z');
+  }
+  /** Extrude a convex 2D polygon from a0 to a1 along an axis. Points are (x,y) for 'z', (y,z) for 'x', (x,z) for 'y'. */
+  function prism(pts, a0, a1, axis) {
+    const map = axis === 'x' ? (u, v, a) => [a, u, v] : axis === 'y' ? (u, v, a) => [u, a, v] : (u, v, a) => [u, v, a];
+    const q = clean2(pts);
+    return fromCaps(q.map(p => map(p[0], p[1], a0)), q.map(p => map(p[0], p[1], a1)));
+  }
+  /** Extrude a 2D polygon (in basis e1, e2 at origin o) along dir from t0 to t1. */
+  function prismDir(pts, o, e1, e2, dir, t0, t1) {
+    const P = (u, v, t) => [o[0] + e1[0] * u + e2[0] * v + dir[0] * t, o[1] + e1[1] * u + e2[1] * v + dir[1] * t, o[2] + e1[2] * u + e2[2] * v + dir[2] * t];
+    const q = clean2(pts);
+    return fromCaps(q.map(p => P(p[0], p[1], t0)), q.map(p => P(p[0], p[1], t1)));
+  }
+  function ngon(cx, cy, rx, ry, n, rot) {
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const a = (rot || 0) + 2 * Math.PI * i / n;
+      pts.push([cx + rx * Math.cos(a), cy + ry * Math.sin(a)]);
+    }
+    return pts;
+  }
+  /** Rounded slot outline, long along the first axis. */
+  function stadium(cx, cy, hw, ht, seg) {
+    const r = ht, c = Math.max(0, hw - ht), pts = [];
+    for (let i = 0; i <= seg; i++) { const a = -Math.PI / 2 + Math.PI * i / seg; pts.push([cx + c + r * Math.cos(a), cy + r * Math.sin(a)]); }
+    for (let i = 0; i <= seg; i++) { const a = Math.PI / 2 + Math.PI * i / seg; pts.push([cx - c + r * Math.cos(a), cy + r * Math.sin(a)]); }
+    return pts;
+  }
+
+  /* ---------- Frame model ---------- */
+
+  function Builder() { this.solids = []; this.hidden = []; this.moves = {}; }
+  Builder.prototype.add = function (piece, P, extra) {
+    P.piece = piece;
+    if (extra) Object.assign(P, extra);
+    this.solids.push(P);
+    return P;
+  };
+  Builder.prototype.cut = function (pieces, C) {
+    const set = [].concat(pieces);
+    this.solids = this.solids.flatMap(S => set.includes(S.piece) ? subtract(S, C) : [S]);
+  };
+  Builder.prototype.line = function (pts, closed) { this.hidden.push({ pts, closed: !!closed }); };
+
+  const BUILD = {};
+
+  // Each builder works in a local frame where the stiles (left/right) are the members that run through.
+  // L: { OW, OH, wl, wr (stile widths), wt, wb (rail widths), T }.
+
+  function traps(L) {
+    const { OW, OH, wl, wr, wt, wb } = L;
+    return {
+      top: [[0, OH], [wl, OH - wt], [OW - wr, OH - wt], [OW, OH]],
+      bottom: [[0, 0], [OW, 0], [OW - wr, wb], [wl, wb]],
+      left: [[0, 0], [wl, wb], [wl, OH - wt], [0, OH]],
+      right: [[OW, 0], [OW, OH], [OW - wr, OH - wt], [OW - wr, wb]],
+    };
+  }
+  function cornersOf(L) {
+    const { OW, OH, wl, wr, wt, wb } = L;
+    return [
+      { x: 0, y: OH, ix: wl, iy: OH - wt, sx: 1, sy: -1, a: 'top', b: 'left', wa: wt, wb: wl },
+      { x: OW, y: OH, ix: OW - wr, iy: OH - wt, sx: -1, sy: -1, a: 'top', b: 'right', wa: wt, wb: wr },
+      { x: 0, y: 0, ix: wl, iy: wb, sx: 1, sy: 1, a: 'bottom', b: 'left', wa: wb, wb: wl },
+      { x: OW, y: 0, ix: OW - wr, iy: wb, sx: -1, sy: 1, a: 'bottom', b: 'right', wa: wb, wb: wr },
+    ];
+  }
+
+  BUILD.miter = (B, L, p, d) => {
+    const T = L.T, tp = traps(L);
+    for (const k of ['top', 'bottom', 'left', 'right']) B.add(k, prism(tp[k], 0, T, 'z'));
+    const corners = cornersOf(L);
+    if (p.miterReinf === 'keys') {
+      const n = p.keys, kt = p.keyThick, Lk = p.keyLeg;
+      corners.forEach((c, ci) => {
+        const tri = [[c.x, c.y], [c.x + c.sx * Lk, c.y], [c.x, c.y + c.sy * Lk]];
+        for (let i = 1; i <= n; i++) {
+          const zc = T - T * i / (n + 1);
+          B.cut([c.a, c.b], prism(tri, zc - kt / 2, zc + kt / 2, 'z'));
+          B.add(`key${ci}-${i}`, prism(tri, zc - kt / 2, zc + kt / 2, 'z'),
+            { mat: 'accent', grain: norm([-c.sx, c.sy, 0]), move: [-c.sx * 1.6, -c.sy * 1.6, 0] });
+        }
+        B.line(tri, true);
+      });
+    } else if (p.miterReinf === 'vnails') {
+      let size = 7;
+      for (const v of [7, 10, 12, 15]) if (v <= 0.65 * T * Core.MM) size = v;
+      const sz = size / Core.MM;
+      const n = Math.min(L.wl, L.wt, L.wb) - d.R >= 1.25 ? 2 : 1;
+      corners.forEach((c, ci) => {
+        const tmax = Math.max(0.2, Math.min(1 - d.R / c.wa, 1 - d.R / c.wb));
+        const u = norm([c.ix - c.x, c.iy - c.y, 0]), v = [-u[1], u[0], 0];
+        for (let i = 0; i < n; i++) {
+          const t = tmax * (i + 1) / (n + 1);
+          const m = [c.x + (c.ix - c.x) * t, c.y + (c.iy - c.y) * t];
+          const apex = [m[0] - u[0] * 0.06, m[1] - u[1] * 0.06];
+          for (const sgn of [1, -1]) {
+            const end = [m[0] + u[0] * 0.1 + v[0] * 0.15 * sgn, m[1] + u[1] * 0.1 + v[1] * 0.15 * sgn];
+            const e = norm([end[0] - apex[0], end[1] - apex[1], 0]), q = [-e[1] * 0.014, e[0] * 0.014];
+            B.add(`vn${ci}-${i}-${sgn}`, prism([[apex[0] + q[0], apex[1] + q[1]], [end[0] + q[0], end[1] + q[1]], [end[0] - q[0], end[1] - q[1]], [apex[0] - q[0], apex[1] - q[1]]], -0.006, sz, 'z'),
+              { mat: 'metal', grain: [0, 0, 1], moveWith: [c.a, c.b] });
+          }
+        }
+      });
+    } else if (p.miterReinf === 'biscuits') {
+      const avail = Math.hypot(L.wl, Math.min(L.wt, L.wb));
+      const b = Core.BISCUITS.find(x => x.len + 0.25 <= avail);
+      if (b) {
+        const zc = d.R > 0 ? d.D + (T - d.D) / 2 : T / 2;
+        corners.forEach((c, ci) => {
+          const u = norm([c.ix - c.x, c.iy - c.y, 0]), v = [-u[1], u[0], 0];
+          const m = [(c.x + c.ix) / 2, (c.y + c.iy) / 2];
+          const pts = [];
+          for (let i = 0; i < 12; i++) {
+            const a = 2 * Math.PI * i / 12;
+            pts.push([m[0] + u[0] * b.len / 2 * Math.cos(a) + v[0] * b.wid / 2 * Math.sin(a), m[1] + u[1] * b.len / 2 * Math.cos(a) + v[1] * b.wid / 2 * Math.sin(a)]);
+          }
+          B.cut([c.a, c.b], prism(pts, zc - 0.08, zc + 0.08, 'z'));
+          B.add(`bis${ci}`, prism(pts, zc - 0.078, zc + 0.078, 'z'), { mat: 'hw', grain: u, moveWith: [c.a, c.b] });
+          B.line(pts, true);
+        });
+      }
+    }
+  };
+
+  BUILD.halflap = (B, L, p) => {
+    const { OW, OH, wl, wr, wt, wb, T } = L, dd = p.lapDepth;
+    B.add('left', box(0, wl, 0, OH, 0, T));
+    B.add('right', box(OW - wr, OW, 0, OH, 0, T));
+    B.add('top', box(0, OW, OH - wt, OH, 0, T));
+    B.add('bottom', box(0, OW, 0, wb, 0, T));
+    // The through pieces keep their front at the corners; the others keep their back.
+    B.cut('left', box(-1, wl + 1, OH - wt, OH + 1, -1, dd));
+    B.cut('left', box(-1, wl + 1, -1, wb, -1, dd));
+    B.cut('right', box(OW - wr - 1, OW + 1, OH - wt, OH + 1, -1, dd));
+    B.cut('right', box(OW - wr - 1, OW + 1, -1, wb, -1, dd));
+    B.cut('top', box(-1, wl, OH - wt - 1, OH + 1, dd, T + 1));
+    B.cut('top', box(OW - wr, OW + 1, OH - wt - 1, OH + 1, dd, T + 1));
+    B.cut('bottom', box(-1, wl, -1, wb + 1, dd, T + 1));
+    B.cut('bottom', box(OW - wr, OW + 1, -1, wb + 1, dd, T + 1));
+    B.moves = { left: [-0.25, 0, 1.3], right: [0.25, 0, 1.3], top: [0, 0.15, 0], bottom: [0, -0.15, 0] };
+    B.line([[0, OH - wt], [wl, OH - wt]]); B.line([[OW - wr, OH - wt], [OW, OH - wt]]);
+    B.line([[0, wb], [wl, wb]]); B.line([[OW - wr, wb], [OW, wb]]);
+  };
+
+  BUILD.mitredlap = (B, L, p) => {
+    const { OW, OH, wl, wr, wt, wb, T } = L, dd = p.lapDepth, tp = traps(L);
+    B.add('top', prism(tp.top, dd, T, 'z')); B.add('top', box(wl, OW - wr, OH - wt, OH, 0, dd));
+    B.add('bottom', prism(tp.bottom, dd, T, 'z')); B.add('bottom', box(wl, OW - wr, 0, wb, 0, dd));
+    B.add('left', box(0, wl, 0, OH, 0, dd)); B.add('left', prism(tp.left, dd, T, 'z'));
+    B.add('right', box(OW - wr, OW, 0, OH, 0, dd)); B.add('right', prism(tp.right, dd, T, 'z'));
+    B.moves = { top: [0, 0.2, 1.3], bottom: [0, -0.2, 1.3], left: [-0.2, 0, 0], right: [0.2, 0, 0] };
+    B.line([[wl, OH - wt], [wl, OH]]); B.line([[OW - wr, OH - wt], [OW - wr, OH]]);
+    B.line([[wl, 0], [wl, wb]]); B.line([[OW - wr, 0], [OW - wr, wb]]);
+  };
+
+  BUILD.bridle = (B, L, p) => {
+    const { OW, OH, wl, wr, wt, wb, T } = L, t = p.tenonThick, z0 = (T - t) / 2, z1 = z0 + t;
+    B.add('left', box(0, wl, 0, OH, 0, T));
+    B.add('right', box(OW - wr, OW, 0, OH, 0, T));
+    B.cut('left', box(-1, wl + 1, OH - wt, OH + 1, z0, z1)); B.cut('left', box(-1, wl + 1, -1, wb, z0, z1));
+    B.cut('right', box(OW - wr - 1, OW + 1, OH - wt, OH + 1, z0, z1)); B.cut('right', box(OW - wr - 1, OW + 1, -1, wb, z0, z1));
+    B.add('top', box(wl, OW - wr, OH - wt, OH, 0, T));
+    B.add('top', box(0, wl, OH - wt, OH, z0, z1)); B.add('top', box(OW - wr, OW, OH - wt, OH, z0, z1));
+    B.add('bottom', box(wl, OW - wr, 0, wb, 0, T));
+    B.add('bottom', box(0, wl, 0, wb, z0, z1)); B.add('bottom', box(OW - wr, OW, 0, wb, z0, z1));
+    B.moves = { top: [0, 0, 0], bottom: [0, 0, 0] };
+    B.line([[0, OH - wt], [wl, OH - wt]]); B.line([[OW - wr, OH - wt], [OW, OH - wt]]);
+    B.line([[0, wb], [wl, wb]]); B.line([[OW - wr, wb], [OW, wb]]);
+  };
+
+  BUILD.mortise = (B, L, p) => {
+    const { OW, OH, wl, wr, wt, wb, T } = L;
+    const t = p.tenonThick, tl = p.tenonLen, so = p.shoulderOut, si = p.shoulderIn, horn = p.horn;
+    const z0 = (T - t) / 2, z1 = z0 + t, deep = 0.0625;
+    B.add('left', box(0, wl, -horn, OH + horn, 0, T));
+    B.add('right', box(OW - wr, OW, -horn, OH + horn, 0, T));
+    B.add('top', box(wl, OW - wr, OH - wt, OH, 0, T));
+    B.add('bottom', box(wl, OW - wr, 0, wb, 0, T));
+    const ten = [
+      { piece: 'top', into: 'left', x0: wl - tl, x1: wl, m0: wl - tl - deep, m1: wl + 0.01, y0: OH - wt + si, y1: OH - so },
+      { piece: 'top', into: 'right', x0: OW - wr, x1: OW - wr + tl, m0: OW - wr - 0.01, m1: OW - wr + tl + deep, y0: OH - wt + si, y1: OH - so },
+      { piece: 'bottom', into: 'left', x0: wl - tl, x1: wl, m0: wl - tl - deep, m1: wl + 0.01, y0: so, y1: wb - si },
+      { piece: 'bottom', into: 'right', x0: OW - wr, x1: OW - wr + tl, m0: OW - wr - 0.01, m1: OW - wr + tl + deep, y0: so, y1: wb - si },
+    ];
+    for (const k of ten) {
+      if (k.y1 - k.y0 <= 0.02) continue;
+      B.cut(k.into, box(k.m0, k.m1, k.y0, k.y1, z0, z1));
+      B.add(k.piece, box(k.x0, k.x1, k.y0, k.y1, z0, z1));
+      B.line([[k.x0, k.y0], [k.x1, k.y0], [k.x1, k.y1], [k.x0, k.y1]], true);
+    }
+    B.moves = { top: [0, 0, 0], bottom: [0, 0, 0] };
+  };
+
+  function grooved(B, L, depth, gw, profile) {
+    const { OW, OH, wl, wr, wt, wb, T } = L;
+    const z0 = (T - gw) / 2, z1 = z0 + gw;
+    B.add('left', box(0, wl, 0, OH, 0, T));
+    B.add('right', box(OW - wr, OW, 0, OH, 0, T));
+    B.cut('left', box(wl - depth, wl + 1, -1, OH + 1, z0, z1));
+    B.cut('right', box(OW - wr - 1, OW - wr + depth, -1, OH + 1, z0, z1));
+    B.add('top', box(wl, OW - wr, OH - wt, OH, 0, T));
+    B.add('top', box(wl - depth, wl, OH - wt, OH, z0, z1)); B.add('top', box(OW - wr, OW - wr + depth, OH - wt, OH, z0, z1));
+    B.add('bottom', box(wl, OW - wr, 0, wb, 0, T));
+    B.add('bottom', box(wl - depth, wl, 0, wb, z0, z1)); B.add('bottom', box(OW - wr, OW - wr + depth, 0, wb, z0, z1));
+    let c = 0;
+    if (profile) {
+      c = Math.min(depth, T - z1 - 0.03, 0.375);
+      if (c > 0.04) {
+        // The coped rail ends fill the stiles' profile, so the sticking meets like a miter.
+        B.add('top', prism([[wl - c, T], [wl, T], [wl, T - c]], OH - wt, OH, 'y'));
+        B.add('top', prism([[OW - wr + c, T], [OW - wr, T], [OW - wr, T - c]], OH - wt, OH, 'y'));
+        B.add('bottom', prism([[wl - c, T], [wl, T], [wl, T - c]], 0, wb, 'y'));
+        B.add('bottom', prism([[OW - wr + c, T], [OW - wr, T], [OW - wr, T - c]], 0, wb, 'y'));
+      } else c = 0;
+    }
+    B.cut('top', box(-1, OW + 1, OH - wt - 1, OH - wt + depth, z0, z1));
+    B.cut('bottom', box(-1, OW + 1, wb - depth, wb + 1, z0, z1));
+    if (c) {
+      const e = 0.02;
+      B.cut('left', prism([[wl - c - e, T + e], [wl + e, T + e], [wl + e, T - c - e]], -1, OH + 1, 'y'));
+      B.cut('right', prism([[OW - wr + c + e, T + e], [OW - wr - e, T + e], [OW - wr - e, T - c - e]], -1, OH + 1, 'y'));
+      B.cut('top', prism([[OH - wt + c + e, T + e], [OH - wt - e, T + e], [OH - wt - e, T - c - e]], -1, OW + 1, 'x'));
+      B.cut('bottom', prism([[wb - c - e, T + e], [wb + e, T + e], [wb + e, T - c - e]], -1, OW + 1, 'x'));
+    }
+    B.moves = { top: [0, 0, 0], bottom: [0, 0, 0] };
+    B.line([[wl - depth, OH - wt], [wl, OH - wt], [wl, OH], [wl - depth, OH]], true);
+    B.line([[OW - wr, OH - wt], [OW - wr + depth, OH - wt], [OW - wr + depth, OH], [OW - wr, OH]], true);
+    B.line([[wl - depth, 0], [wl, 0], [wl, wb], [wl - depth, wb]], true);
+    B.line([[OW - wr, 0], [OW - wr + depth, 0], [OW - wr + depth, wb], [OW - wr, wb]], true);
+  }
+  BUILD.tongue = (B, L, p) => grooved(B, L, p.grooveD, p.grooveW, false);
+  BUILD.cope = (B, L, p) => grooved(B, L, p.copeD, p.grooveW, true);
+
+  BUILD.butt = (B, L, p, d) => {
+    const { OW, OH, wl, wr, wt, wb, T } = L;
+    B.add('left', box(0, wl, 0, OH, 0, T));
+    B.add('right', box(OW - wr, OW, 0, OH, 0, T));
+    B.add('top', box(wl, OW - wr, OH - wt, OH, 0, T));
+    B.add('bottom', box(wl, OW - wr, 0, wb, 0, T));
+    B.moves = { top: [0, 0, 0], bottom: [0, 0, 0] };
+    // sg: +1 when the rail is on the +x side of the joint. dir: from the outer edge into the frame.
+    const joints = [
+      { jx: wl, sg: 1, rail: 'top', stile: 'left', yo: OH, dir: -1, w: wt },
+      { jx: OW - wr, sg: -1, rail: 'top', stile: 'right', yo: OH, dir: -1, w: wt },
+      { jx: wl, sg: 1, rail: 'bottom', stile: 'left', yo: 0, dir: 1, w: wb },
+      { jx: OW - wr, sg: -1, rail: 'bottom', stile: 'right', yo: 0, dir: 1, w: wb },
+    ];
+    joints.forEach((j, ji) => {
+      const plan = Core.fastenerPlan(d, p, j.w);
+      plan.positions.slice(0, plan.count).forEach((pos, k) => {
+        const y = j.yo + j.dir * pos, id = `hw${ji}-${k}`, both = [j.rail, j.stile];
+        if (plan.kind === 'dowels') {
+          const r = plan.dia / 2, half = plan.len / 2, sec = ngon(y, plan.z, r, r, 10, 0);
+          B.cut(both, prism(sec, j.jx - half - 0.0625, j.jx + half + 0.0625, 'x'));
+          B.add(id, prism(sec, j.jx - half, j.jx + half, 'x'), { mat: 'hw', grain: [1, 0, 0], moveWith: both });
+          B.line([[j.jx - half, y - r], [j.jx + half, y - r], [j.jx + half, y + r], [j.jx - half, y + r]], true);
+        } else if (plan.kind === 'biscuits') {
+          const b = plan.biscuit, pts = ngon(j.jx, y, b.wid / 2, b.len / 2, 12, 0);
+          B.cut(both, prism(pts, plan.z - 0.08, plan.z + 0.08, 'z'));
+          B.add(id, prism(pts, plan.z - 0.078, plan.z + 0.078, 'z'), { mat: 'hw', grain: [0, 1, 0], moveWith: both });
+          B.line(pts, true);
+        } else if (plan.kind === 'pocket') {
+          const a = 15 / Core.DEG;
+          const dir = [-j.sg * Math.cos(a), 0, Math.sin(a)];
+          const tEnd = (T / 2) / Math.sin(a);
+          const start = [j.jx + j.sg * tEnd * Math.cos(a), y, 0];
+          const e1 = [0, 1, 0], e2 = norm(cross(dir, e1));
+          B.cut(j.rail, prismDir(ngon(0, 0, 0.19, 0.19, 10, 0), start, e1, e2, dir, -0.9, tEnd - 0.3));
+          B.cut(j.rail, prismDir(ngon(0, 0, 0.07, 0.07, 8, 0), start, e1, e2, dir, tEnd - 0.35, tEnd + 0.01));
+          B.add(id + 'h', prismDir(ngon(0, 0, 0.16, 0.16, 10, 0), start, e1, e2, dir, tEnd - 0.42, tEnd - 0.3), { mat: 'metal', grain: [0, 0, 1], moveWith: [j.rail] });
+          B.add(id + 's', prismDir(ngon(0, 0, 0.06, 0.06, 8, 0), start, e1, e2, dir, tEnd - 0.3, tEnd - 0.42 + plan.screw), { mat: 'metal', grain: [0, 0, 1], moveWith: [j.rail] });
+        } else {
+          const dm = plan.domino, sec = stadium(y, plan.z, dm.w / 2, dm.t / 2, 4), half = dm.len / 2;
+          B.cut(both, prism(sec, j.jx - half - 0.04, j.jx + half + 0.04, 'x'));
+          B.add(id, prism(sec, j.jx - half, j.jx + half, 'x'), { mat: 'hw', grain: [1, 0, 0], moveWith: both });
+          B.line([[j.jx - half, y - dm.w / 2], [j.jx + half, y - dm.w / 2], [j.jx + half, y + dm.w / 2], [j.jx - half, y + dm.w / 2]], true);
+        }
+      });
+    });
+  };
+
+  const WOOD = {
+    top: { mat: 'rail', grain: [1, 0, 0] }, bottom: { mat: 'rail', grain: [1, 0, 0] },
+    left: { mat: 'stile', grain: [0, 1, 0] }, right: { mat: 'stile', grain: [0, 1, 0] },
+  };
+  const DEFAULT_MOVES = { top: [0, 1, 0], bottom: [0, -1, 0], left: [-1, 0, 0], right: [1, 0, 0] };
+  const SWAP = { left: 'bottom', right: 'top', bottom: 'left', top: 'right' };
+
+  /**
+   * Build the 3D model for a computed frame.
+   * opts.corner: only the top-left corner, cut off as a section. opts.explode: 0 (assembled) to 1.
+   */
+  function buildModel(R, opts) {
+    opts = opts || {};
+    const s = R.state, d = R.dims, p = R.params;
+    const thr = !!p.thr;
+    const L = thr
+      ? { OW: d.OH, OH: d.OW, wl: d.wB, wr: d.wT, wt: d.ws, wb: d.ws, T: d.T }
+      : { OW: d.OW, OH: d.OH, wl: d.ws, wr: d.ws, wt: d.wT, wb: d.wB, T: d.T };
+    const B = new Builder();
+    BUILD[s.joint](B, L, p, d);
+    const moves = Object.assign({}, DEFAULT_MOVES, B.moves);
+    for (const S of B.solids) {
+      if (S.move) continue;
+      if (S.moveWith) {
+        const m = [0, 0, 0];
+        for (const k of S.moveWith) { const v = moves[k] || [0, 0, 0]; m[0] += v[0]; m[1] += v[1]; m[2] += v[2]; }
+        S.move = m.map(v => v / S.moveWith.length);
+      } else S.move = moves[S.piece] || [0, 0, 0];
+    }
+    let solids = B.solids, hidden = B.hidden;
+    if (thr) {
+      const sw = v => [v[1], v[0], v[2]];
+      solids = solids.map(S => Object.assign({}, S, {
+        faces: S.faces.map(f => f.map(sw)), piece: SWAP[S.piece] || S.piece,
+        move: sw(S.move), grain: S.grain ? sw(S.grain) : S.grain,
+      }));
+      hidden = hidden.map(h => ({ pts: h.pts.map(q => [q[1], q[0]]), closed: h.closed }));
+    }
+    for (const S of solids) if (WOOD[S.piece]) { S.mat = WOOD[S.piece].mat; S.grain = WOOD[S.piece].grain; }
+    if (d.R > 1e-6 && d.D > 1e-6) {
+      const rab = box(d.ws - d.R, d.OW - d.ws + d.R, d.wB - d.R, d.OH - d.wT + d.R, -1, d.D);
+      solids = solids.flatMap(S => S.mat === 'metal' ? [S] : subtract(S, rab));
+    }
+    if (opts.corner) {
+      const stub = Math.max(d.ws, d.wT) * 1.7 + 1;
+      const cx = Math.min(d.OW * 0.55, stub), cy = Math.min(d.OH * 0.55, stub);
+      solids = solids.map(S => { const Q = clip(S, [1, 0, 0], cx); return Q && clip(Q, [0, -1, 0], -(d.OH - cy)); }).filter(Boolean);
+    }
+    const ex = (opts.explode || 0) * Math.max(d.ws, d.wT, d.wB) * 0.85;
+    if (ex > 0) solids = solids.map(S => translate(S, [S.move[0] * ex, S.move[1] * ex, S.move[2] * ex]));
+    return { solids, hidden };
+  }
+
+  return { box, prism, prismDir, ngon, stadium, clip, subtract, translate, volume, centroid, bbox, newell, buildModel };
+});
+</script>
+<script>
+/* Framewright renderer: a small z-buffer rasterizer for convex solids, drawn into a 2D canvas
+   with flat shading, procedural wood grain and outlines wherever two pieces or two faces meet. */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.FWRender = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  const MATS = {
+    rail: [226, 184, 130],
+    stile: [181, 124, 76],
+    accent: [94, 60, 38],
+    hw: [238, 216, 166],
+    metal: [164, 170, 180],
+  };
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const norm = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+
+  function newell(f) {
+    let x = 0, y = 0, z = 0;
+    for (let i = 0; i < f.length; i++) {
+      const a = f[i], b = f[(i + 1) % f.length];
+      x += (a[1] - b[1]) * (a[2] + b[2]); y += (a[2] - b[2]) * (a[0] + b[0]); z += (a[0] - b[0]) * (a[1] + b[1]);
+    }
+    return [x, y, z];
+  }
+
+  /** Turn solids into flat faces with normals, outline keys and grain parameters. Do this once per model. */
+  function prepare(solids) {
+    const pieceIds = new Map(), planeIds = new Map(), pieceCenter = new Map();
+    for (const S of solids) {
+      let c = pieceCenter.get(S.piece);
+      if (!c) pieceCenter.set(S.piece, c = [0, 0, 0, 0]);
+      for (const f of S.faces) for (const p of f) { c[0] += p[0]; c[1] += p[1]; c[2] += p[2]; c[3]++; }
+    }
+    const faces = [];
+    let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+    for (const S of solids) {
+      let pid = pieceIds.get(S.piece);
+      if (pid == null) { pid = pieceIds.size; pieceIds.set(S.piece, pid); }
+      let sc = [0, 0, 0], k = 0;
+      for (const f of S.faces) for (const p of f) {
+        sc[0] += p[0]; sc[1] += p[1]; sc[2] += p[2]; k++;
+        if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
+        if (p[2] < minZ) minZ = p[2]; if (p[2] > maxZ) maxZ = p[2];
+      }
+      sc = sc.map(v => v / k);
+      const pc = pieceCenter.get(S.piece), center = [pc[0] / pc[3], pc[1] / pc[3], pc[2] / pc[3]];
+      const g = norm(S.grain || [1, 0, 0]);
+      const e1 = norm(cross(g, Math.abs(g[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0])), e2 = cross(g, e1);
+      const seed = (pid * 2.399) % 6.283;
+      const rc = [dot(center, e1) + 4.5 * Math.cos(seed), dot(center, e2) + 4.5 * Math.sin(seed)];
+      const base = MATS[S.mat] || MATS.rail;
+      for (const f of S.faces) {
+        const nn = newell(f), l = Math.hypot(nn[0], nn[1], nn[2]);
+        if (l < 1e-12) continue;
+        let n = [nn[0] / l, nn[1] / l, nn[2] / l], d = dot(n, f[0]);
+        if (dot(n, sc) > d) { n = [-n[0], -n[1], -n[2]]; d = -d; }
+        const key = `${Math.round(n[0] * 400)},${Math.round(n[1] * 400)},${Math.round(n[2] * 400)},${Math.round(d * 400)}`;
+        let plid = planeIds.get(key);
+        if (plid == null) { plid = planeIds.size; planeIds.set(key, plid); }
+        let across = cross(n, g);
+        const la = Math.hypot(across[0], across[1], across[2]);
+        across = la > 1e-6 ? [across[0] / la, across[1] / la, across[2] / la] : e1;
+        faces.push({
+          pts: f, n, key: pid * 65536 + plid, base,
+          metal: S.mat === 'metal', end: S.mat !== 'metal' && Math.abs(dot(n, g)) > 0.7,
+          g, across, e1, e2, rc, seed,
+        });
+      }
+    }
+    return { faces, bounds: [minX, minY, minZ, maxX, maxY, maxZ] };
+  }
+
+  function rotation(yaw, pitch) {
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    return [cy, 0, sy, sy * sp, cp, -cy * sp, -sy * cp, sp, cy * cp];
+  }
+
+  /** Camera that fits the whole model in a w × h box at the given angles. */
+  function fit(prep, yaw, pitch, w, h, pad, maxScale) {
+    const m = rotation(yaw, pitch);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const F of prep.faces) for (const p of F.pts) {
+      const vx = m[0] * p[0] + m[1] * p[1] + m[2] * p[2], vy = m[3] * p[0] + m[4] * p[1] + m[5] * p[2];
+      if (vx < x0) x0 = vx; if (vx > x1) x1 = vx; if (vy < y0) y0 = vy; if (vy > y1) y1 = vy;
+    }
+    if (!isFinite(x0)) return { yaw, pitch, scale: 1, cx: w / 2, cy: h / 2 };
+    let scale = Math.min((w - 2 * pad) / Math.max(1e-6, x1 - x0), (h - 2 * pad) / Math.max(1e-6, y1 - y0));
+    if (maxScale) scale = Math.min(scale, maxScale);
+    return { yaw, pitch, scale, cx: w / 2 - (x0 + x1) / 2 * scale, cy: h / 2 + (y0 + y1) / 2 * scale };
+  }
+
+  function Renderer(canvas) {
+    this.c = canvas;
+    this.ctx = canvas.getContext('2d');
+  }
+
+  /** Draw prepared faces. cam: { yaw, pitch, scale (css px per inch), cx, cy (css px) }. */
+  Renderer.prototype.render = function (prep, cam, opt) {
+    opt = opt || {};
+    const cw = opt.width, ch = opt.height;
+    const res = opt.res || Math.min(3, Math.max(2, (typeof devicePixelRatio !== 'undefined' && devicePixelRatio) || 1));
+    const W = Math.max(1, Math.round(cw * res)), H = Math.max(1, Math.round(ch * res));
+    const c = this.c;
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+    c.style.width = cw + 'px'; c.style.height = ch + 'px';
+    if (!this.zb || this.zb.length !== W * H) {
+      this.zb = new Float32Array(W * H); this.fb = new Int32Array(W * H);
+      this.kb = new Int32Array(W * H); this.mask = new Uint8Array(W * H);
+      this.img = this.ctx.createImageData(W, H);
+    }
+    const zb = this.zb, fb = this.fb, kb = this.kb, mask = this.mask;
+    zb.fill(-Infinity); fb.fill(-1); mask.fill(0);
+    const m = rotation(cam.yaw, cam.pitch);
+    const [m00, m01, m02, m10, m11, m12, m20, m21, m22] = m;
+    const S = cam.scale * res, ox = cam.cx * res, oy = cam.cy * res;
+    const faces = prep.faces;
+    const shade = new Float32Array(faces.length);
+    const Lt = norm([-0.38, 0.55, 0.74]);
+
+    function tri(x0, y0, z0, x1, y1, z1, x2, y2, z2, fid) {
+      let area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
+      if (Math.abs(area) < 1e-9) return;
+      if (area < 0) { let t = x1; x1 = x2; x2 = t; t = y1; y1 = y2; y2 = t; t = z1; z1 = z2; z2 = t; area = -area; }
+      const minX = Math.max(0, Math.floor(Math.min(x0, x1, x2))), maxX = Math.min(W - 1, Math.ceil(Math.max(x0, x1, x2)));
+      const minY = Math.max(0, Math.floor(Math.min(y0, y1, y2))), maxY = Math.min(H - 1, Math.ceil(Math.max(y0, y1, y2)));
+      if (minX > maxX || minY > maxY) return;
+      const inv = 1 / area;
+      const a0 = -(y2 - y1), a1 = -(y0 - y2), a2 = -(y1 - y0);
+      for (let py = minY; py <= maxY; py++) {
+        const fy = py + 0.5, fx = minX + 0.5;
+        let w0 = (x2 - x1) * (fy - y1) - (y2 - y1) * (fx - x1);
+        let w1 = (x0 - x2) * (fy - y2) - (y0 - y2) * (fx - x2);
+        let w2 = (x1 - x0) * (fy - y0) - (y1 - y0) * (fx - x0);
+        let i = py * W + minX;
+        for (let px = minX; px <= maxX; px++, i++, w0 += a0, w1 += a1, w2 += a2) {
+          if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+          const z = (w0 * z0 + w1 * z1 + w2 * z2) * inv;
+          if (z > zb[i]) { zb[i] = z; fb[i] = fid; }
+        }
+      }
+    }
+
+    const xs = [], ys = [], zs = [];
+    for (let fi = 0; fi < faces.length; fi++) {
+      const F = faces[fi], n = F.n;
+      const vz = m20 * n[0] + m21 * n[1] + m22 * n[2];
+      if (vz <= 1e-6) continue;
+      const vx = m00 * n[0] + m01 * n[1] + m02 * n[2], vy = m10 * n[0] + m11 * n[1] + m12 * n[2];
+      shade[fi] = 0.6 + 0.47 * Math.max(0, vx * Lt[0] + vy * Lt[1] + vz * Lt[2]);
+      const P = F.pts, k = P.length;
+      for (let i = 0; i < k; i++) {
+        const p = P[i];
+        xs[i] = ox + (m00 * p[0] + m01 * p[1] + m02 * p[2]) * S;
+        ys[i] = oy - (m10 * p[0] + m11 * p[1] + m12 * p[2]) * S;
+        zs[i] = m20 * p[0] + m21 * p[1] + m22 * p[2];
+      }
+      for (let i = 1; i < k - 1; i++) tri(xs[0], ys[0], zs[0], xs[i], ys[i], zs[i], xs[i + 1], ys[i + 1], zs[i + 1], fi);
+    }
+
+    const data = this.img.data;
+    const inv = 1 / S;
+    for (let py = 0, i = 0; py < H; py++) {
+      const vy = -(py + 0.5 - oy) * inv;
+      for (let px = 0; px < W; px++, i++) {
+        const f = fb[i], o4 = i * 4;
+        if (f < 0) { kb[i] = -1; data[o4 + 3] = 0; continue; }
+        const F = faces[f];
+        kb[i] = F.key;
+        const vx = (px + 0.5 - ox) * inv, vz = zb[i];
+        const X = m00 * vx + m10 * vy + m20 * vz, Y = m01 * vx + m11 * vy + m21 * vz, Z = m02 * vx + m12 * vy + m22 * vz;
+        let mul = shade[f];
+        if (!F.metal) {
+          if (F.end) {
+            const a = X * F.e1[0] + Y * F.e1[1] + Z * F.e1[2] - F.rc[0], b = X * F.e2[0] + Y * F.e2[1] + Z * F.e2[2] - F.rc[1];
+            mul *= 0.8 * (1 + 0.075 * Math.sin(Math.sqrt(a * a + b * b) * 44 + F.seed));
+          } else {
+            const t = X * F.across[0] + Y * F.across[1] + Z * F.across[2], u = X * F.g[0] + Y * F.g[1] + Z * F.g[2];
+            mul *= 1 + 0.06 * Math.sin(t * 38 + 2.6 * Math.sin(u * 0.5 + t * 2.2 + F.seed) + F.seed * 3)
+              + 0.035 * Math.sin(t * 9 + u * 0.11 + F.seed * 5);
+          }
+        }
+        const b = F.base;
+        data[o4] = Math.min(255, b[0] * mul); data[o4 + 1] = Math.min(255, b[1] * mul); data[o4 + 2] = Math.min(255, b[2] * mul);
+        data[o4 + 3] = 255;
+      }
+    }
+
+    if (opt.edges !== false) {
+      for (let py = 0, i = 0; py < H; py++) {
+        for (let px = 0; px < W; px++, i++) {
+          const k = kb[i];
+          if (px + 1 < W && kb[i + 1] !== k) { mask[i] = 1; mask[i + 1] = 1; }
+          if (py + 1 < H && kb[i + W] !== k) { mask[i] = 1; mask[i + W] = 1; }
+        }
+      }
+      const ec = opt.edge || [42, 30, 22], sc = opt.silhouette || ec;
+      for (let i = 0; i < W * H; i++) {
+        if (!mask[i]) continue;
+        const o4 = i * 4;
+        if (kb[i] < 0) { data[o4] = sc[0]; data[o4 + 1] = sc[1]; data[o4 + 2] = sc[2]; data[o4 + 3] = 235; }
+        else { data[o4] = data[o4] * 0.22 + ec[0] * 0.78; data[o4 + 1] = data[o4 + 1] * 0.22 + ec[1] * 0.78; data[o4 + 2] = data[o4 + 2] * 0.22 + ec[2] * 0.78; }
+      }
+    }
+    this.ctx.putImageData(this.img, 0, 0);
+  };
+
+  return { MATS, prepare, fit, rotation, Renderer };
+});
+</script>
+<script>
+/* Framewright app: connects the frame math, the 3D model and the page. */
+(function () {
+  'use strict';
+  const C = window.FWCore, G = window.FWGeom, RN = window.FWRender;
+  const $ = (s, el) => (el || document).querySelector(s);
+  const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
+  const KEY_CUR = 'framewright.current', KEY_SAVED = 'framewright.designs';
+  const store = {
+    get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } },
+  };
+  const inFrame = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  /** Escape, then typeset fractions as small numerators over denominators. */
+  const fr = t => esc(t)
+    .replace(/(\d+)\/(\d+)/g, '<span class="fr"><sup>$1</sup>&frasl;<sub>$2</sub></span>')
+    .replace(/(&quot;)([+−])/g, '$1<span class="mk" title="a hair $2">$2</span>')
+    .replace(/title="a hair \+"/g, 'title="a hair over"').replace(/title="a hair −"/g, 'title="a hair under"');
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
+
+  /* ---------- State ---------- */
+
+  function encodeState(s) {
+    const bytes = new TextEncoder().encode(JSON.stringify(s));
+    let bin = '';
+    bytes.forEach(b => { bin += String.fromCharCode(b); });
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function decodeHash() {
+    const m = location.hash.match(/^#d=([A-Za-z0-9_-]+)$/);
+    if (!m) return null;
+    try {
+      const bin = atob(m[1].replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))));
+    } catch (e) { return null; }
+  }
+
+  let state = C.normalizeState(decodeHash() || store.get(KEY_CUR) || C.defaultState());
+  let R = null;
+  let frontModel = null, frontPrep = null, cornerPrep = null, cornerKey = '';
+  const ANGLES = { iso: [0.6, 0.45], back: [Math.PI - 0.6, 0.45], flat: [0, 0] };
+  const view = { yaw: ANGLES.iso[0], pitch: ANGLES.iso[1], explode: 0.55, mode: 'corner', angle: 'iso', dragging: false };
+
+  const prec = () => state.units === 'mm' ? state.precMm : state.precIn;
+  const L = v => C.fmtLen(v, state.units, prec());
+  const Lplain = v => C.fmtLen(v, state.units, prec(), { unit: false });
+  const parse = t => C.parseLen(t, state.units);
+
+  function getPath(o, p) { return p.split('.').reduce((a, k) => (a == null ? a : a[k]), o); }
+  function setPath(o, p, v) {
+    const ks = p.split('.');
+    let a = o;
+    for (let i = 0; i < ks.length - 1; i++) a = a[ks[i]];
+    a[ks[ks.length - 1]] = v;
+  }
+
+  // Which "calculate" mode makes a dimension the calculated one, and what to calculate instead when it is set.
+  const GROUP = { 'inner.w': 'opening', 'inner.h': 'opening', 'outside.w': 'outside', 'outside.h': 'outside', stile: 'widths', top: 'widths', bottom: 'widths' };
+  const ALT = { outside: 'widths', opening: 'widths', widths: 'outside' };
+  function innerWord() { return state.innerRef === 'sight' ? 'Opening' : state.mat.on ? 'Image' : 'Artwork'; }
+  function solveName(g) {
+    if (g === 'outside') return 'the outside size';
+    if (g === 'opening') return state.innerRef === 'sight' ? 'the visible opening' : state.mat.on ? 'the image size' : 'the artwork size';
+    return 'the stile and rail widths';
+  }
+  const LABELS = {
+    'inner.w': () => `${innerWord()} width`, 'inner.h': () => `${innerWord()} height`,
+    'outside.w': () => 'Outside width', 'outside.h': () => 'Outside height',
+    stile: () => 'Stile width', top: () => 'Top rail width', bottom: () => 'Bottom rail width',
+  };
+
+  function update(fn) {
+    fn(state);
+    recompute();
+    store.set(KEY_CUR, state);
+  }
+  function recompute() {
+    R = C.compute(state);
+    state = R.state;
+    frontModel = frontPrep = cornerPrep = null;
+    schedule();
+  }
+  let raf = 0;
+  function schedule() {
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderAll(); });
+  }
+
+  function setLen(path, v) {
+    let switched = null;
+    update(s => {
+      const g = GROUP[path];
+      if (g && g === s.solve) {
+        s.solve = ALT[g];
+        switched = s.solve;
+        if (s.solve === 'widths') s.linkWidths = false;
+      }
+      if (g === 'widths' && s.linkWidths) { s.stile = v; s.top = v; s.bottom = v; }
+      else setPath(s, path, v);
+    });
+    if (switched) toast(`Now calculating ${solveName(switched)}`);
+  }
+
+  /* ---------- Toast ---------- */
+
+  let toastTimer = 0;
+  function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  /* ---------- Joint picker ---------- */
+
+  function buildJoints() {
+    $('#joints').innerHTML = C.JOINTS.map(j =>
+      `<button type="button" class="jcard" data-joint="${j.id}" aria-pressed="false" title="${esc(j.blurb)}"><canvas aria-hidden="true"></canvas><span>${esc(j.name)}</span></button>`).join('');
+    $('#joints').addEventListener('click', e => {
+      const b = e.target.closest('.jcard');
+      if (b && b.dataset.joint !== state.joint) update(s => { s.joint = b.dataset.joint; });
+    });
+  }
+  function drawThumbs() {
+    for (const b of $$('#joints .jcard')) {
+      const id = b.dataset.joint;
+      const jp = id === 'miter' ? { miterReinf: 'keys' } : id === 'butt' ? { buttReinf: 'dowels' } : {};
+      const RR = C.compute(Object.assign(C.defaultState(), { joint: id, jp }));
+      if (!RR.ok) continue;
+      const prep = RN.prepare(G.buildModel(RR, { corner: true, explode: 0.45 }).solids);
+      new RN.Renderer(b.querySelector('canvas')).render(prep, RN.fit(prep, 0.6, 0.45, 122, 76, 4), { width: 122, height: 76, res: 2 });
+    }
+  }
+
+  /* ---------- Inspector ---------- */
+
+  const THROUGH_LABEL = {
+    halflap: 'Shows on the front, running through', bridle: 'Gets the open slot (shows on the front)',
+    mortise: 'Gets the mortises (runs full length)', tongue: 'Runs full length', cope: 'Runs full length', butt: 'Runs full length',
+  };
+  const JF = {
+    miter: [
+      { k: 'miterReinf', type: 'select', label: 'Reinforcement', opts: [['keys', 'Corner keys (splines)'], ['vnails', 'V-nails'], ['biscuits', 'Biscuits'], ['none', 'Glue only']] },
+      { k: 'keys', type: 'select', label: 'Keys per corner', opts: [[1, '1'], [2, '2'], [3, '3']], when: p => p.miterReinf === 'keys' },
+      { k: 'keyLeg', type: 'len', label: 'Key size along the edge', when: p => p.miterReinf === 'keys' },
+      { k: 'keyThick', type: 'len', label: 'Key thickness', when: p => p.miterReinf === 'keys' },
+    ],
+    halflap: [{ k: 'lapDepth', type: 'len', label: 'Lap depth, through pieces' }],
+    mitredlap: [{ k: 'lapDepth', type: 'len', label: 'Back lap thickness' }],
+    bridle: [{ k: 'tenonThick', type: 'len', label: 'Tenon thickness' }],
+    mortise: [
+      { k: 'tenonThick', type: 'len', label: 'Tenon thickness' },
+      { k: 'tenonLen', type: 'len', label: 'Tenon length' },
+      { k: 'shoulderOut', type: 'len', label: 'Outer shoulder' },
+      { k: 'shoulderIn', type: 'len', label: 'Inner shoulder' },
+      { k: 'horn', type: 'len', label: 'Horns, each end' },
+    ],
+    tongue: [{ k: 'grooveW', type: 'len', label: 'Groove width' }, { k: 'grooveD', type: 'len', label: 'Groove depth' }],
+    cope: [{ k: 'copeD', type: 'len', label: 'Cope depth of your bits' }, { k: 'grooveW', type: 'len', label: 'Groove width' }],
+    butt: [
+      { k: 'buttReinf', type: 'select', label: 'Reinforcement', opts: [['dowels', 'Dowels'], ['biscuits', 'Biscuits'], ['pocket', 'Pocket screws'], ['domino', 'Loose tenons (Domino)']] },
+      { k: 'dowelDia', type: 'len', label: 'Dowel diameter', when: p => p.buttReinf === 'dowels' },
+      { k: 'dowelLen', type: 'len', label: 'Dowel length', when: p => p.buttReinf === 'dowels' },
+    ],
+  };
+
+  function renderJointFields() {
+    const p = R.params;
+    const defs = (JF[state.joint] || []).filter(f => !f.when || f.when(p));
+    const box = $('#joint-fields');
+    const sig = state.joint + '|' + defs.map(f => f.k).join(',');
+    if (box.dataset.sig !== sig) {
+      box.innerHTML = defs.map(f => f.type === 'select'
+        ? `<label class="field span2"><span class="lbl">${esc(f.label)}</span><span class="inp"><select id="jp-${f.k}" data-jp="${f.k}" data-type="select">${f.opts.map(([v, t]) => `<option value="${v}">${esc(t)}</option>`).join('')}</select></span></label>`
+        : `<label class="field"><span class="lbl">${esc(f.label)}<span class="auto" data-auto="${f.k}"></span></span><span class="inp"><input id="jp-${f.k}" data-jp="${f.k}" spellcheck="false"><span class="u"></span></span></label>`).join('')
+        || '<p class="help span2">This joint has no extra settings.</p>';
+      box.dataset.sig = sig;
+    }
+    for (const f of defs) {
+      const el = $(`#jp-${f.k}`);
+      if (!el) continue;
+      if (f.type === 'select') { el.value = String(p[f.k]); continue; }
+      if (document.activeElement !== el && !el.closest('.field').classList.contains('bad')) el.value = Lplain(p[f.k]);
+      el.setAttribute('inputmode', state.units === 'mm' ? 'decimal' : 'text');
+      const tag = box.querySelector(`[data-auto="${f.k}"]`);
+      const set = state.jp[f.k] != null;
+      tag.innerHTML = set ? `<button type="button" class="reset" data-reset="${f.k}">Back to auto</button>` : 'auto';
+    }
+  }
+
+  function renderForm() {
+    const s = state;
+    const unit = s.units === 'mm' ? 'mm' : 'in';
+    for (const el of $$('#inspector [data-path]')) {
+      const path = el.dataset.path, kind = el.dataset.kind || 'len';
+      const v = getPath(s, path);
+      if (kind === 'bool') { el.checked = !!v; continue; }
+      if (document.activeElement === el) continue;
+      const f = el.closest('.field');
+      if (f && f.classList.contains('bad')) continue;
+      el.value = kind === 'int' ? String(v) : Lplain(v);
+      if (kind === 'len') el.setAttribute('inputmode', s.units === 'mm' ? 'decimal' : 'text');
+    }
+    $$('.u').forEach(u => { u.textContent = unit; });
+    for (const f of $$('#inspector [data-calc]')) f.classList.toggle('calc', f.dataset.calc === s.solve);
+    $$('.lbl-inner').forEach(e => { e.textContent = innerWord(); });
+    $('#solve-inner-btn').textContent = s.innerRef === 'sight' ? 'Opening' : s.mat.on ? 'Image size' : 'Artwork size';
+    $('#f-link').disabled = s.solve === 'widths';
+    $('#mat-fields').style.display = s.mat.on ? 'grid' : 'none';
+    const sel = $('#f-prec');
+    if (sel.dataset.sig !== s.units) {
+      const opts = s.units === 'mm' ? [[1, '1 mm'], [0.5, '0.5 mm'], [0.1, '0.1 mm']] : [[8, 'Nearest 1/8"'], [16, 'Nearest 1/16"'], [32, 'Nearest 1/32"'], ['dec', 'Decimal inches']];
+      sel.innerHTML = opts.map(([v, t]) => `<option value="${v}">${esc(t)}</option>`).join('');
+      sel.dataset.sig = s.units;
+    }
+    sel.value = String(s.units === 'mm' ? s.precMm : s.precIn);
+    const j = R.joint;
+    $('#through-field').hidden = !j.through;
+    $('#lbl-through').textContent = THROUGH_LABEL[s.joint] || 'Runs through';
+    $('#lg-joint').textContent = `${j.name}`;
+  }
+
+  function markBad(t, msg) {
+    const f = t.closest('.field');
+    f.classList.add('bad');
+    let e = f.querySelector('.err');
+    if (!e) { e = document.createElement('span'); e.className = 'err'; f.appendChild(e); }
+    e.textContent = msg;
+  }
+  function clearBad(t) {
+    const f = t.closest('.field');
+    if (!f) return;
+    f.classList.remove('bad');
+    const e = f.querySelector('.err');
+    if (e) e.remove();
+  }
+
+  function commitPath(t) {
+    const path = t.dataset.path, kind = t.dataset.kind || 'len';
+    if (kind === 'bool') return update(s => setPath(s, path, t.checked));
+    if (kind === 'int') {
+      const v = parseInt(t.value, 10);
+      if (!(v >= 1 && v <= 99)) return markBad(t, 'Enter a whole number from 1 to 99.');
+      clearBad(t);
+      return update(s => setPath(s, path, v));
+    }
+    const v = parse(t.value);
+    if (!isFinite(v) || v < 0) return markBad(t, `Can't read "${t.value}". Try 11 3/4, 11.75 or 298 mm.`);
+    clearBad(t);
+    if (GROUP[path]) setLen(path, v);
+    else update(s => setPath(s, path, v));
+  }
+  function commitJp(t) {
+    const k = t.dataset.jp;
+    if (t.dataset.type === 'select') {
+      const v = k === 'keys' ? +t.value : t.value;
+      return update(s => { s.jp[k] = v; });
+    }
+    if (!t.value.trim()) { clearBad(t); return update(s => { delete s.jp[k]; }); }
+    const v = parse(t.value);
+    if (!isFinite(v) || v < 0) return markBad(t, `Can't read "${t.value}".`);
+    clearBad(t);
+    update(s => { s.jp[k] = v; });
+  }
+
+  function bindInspector() {
+    const form = $('#inspector');
+    form.addEventListener('submit', e => e.preventDefault());
+    form.addEventListener('change', e => {
+      const t = e.target;
+      if (t.id === 'f-prec') return update(s => { if (s.units === 'mm') s.precMm = +t.value; else s.precIn = t.value === 'dec' ? 'dec' : +t.value; });
+      if (t.dataset.path) return commitPath(t);
+      if (t.dataset.jp) return commitJp(t);
+    });
+    form.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') { e.preventDefault(); e.target.blur(); }
+    });
+    form.addEventListener('focusin', e => { if (e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') e.target.select(); });
+    form.addEventListener('click', e => {
+      const r = e.target.closest('[data-reset]');
+      if (r) { e.preventDefault(); const k = r.dataset.reset; update(s => { delete s.jp[k]; }); }
+    });
+  }
+
+  /* ---------- Segmented controls ---------- */
+
+  function setSeg(name, val) {
+    for (const b of $$(`[data-seg="${name}"] button`)) b.setAttribute('aria-pressed', String(b.dataset.val === String(val)));
+  }
+  function bindSegs() {
+    document.addEventListener('click', e => {
+      const b = e.target.closest('[data-seg] button');
+      if (!b) return;
+      const seg = b.closest('[data-seg]').dataset.seg, val = b.dataset.val;
+      if (seg === 'units') update(s => { s.units = val; });
+      else if (seg === 'solve') update(s => { s.solve = val; if (val === 'widths') s.linkWidths = false; });
+      else if (seg === 'innerRef') {
+        if (val === state.innerRef) return;
+        const d = R.dims;
+        update(s => {
+          // Keep the same frame: re-express the inside size in the new terms.
+          if (R.ok) s.inner = val === 'sight' ? { w: d.SW, h: d.SH } : s.mat.on ? { w: d.IW, h: d.IH } : { w: d.GW, h: d.GH };
+          s.innerRef = val;
+        });
+      }
+      else if (seg === 'through') update(s => { s.through = val; });
+      else if (seg === 'vmode') { view.mode = val; cornerPrep = null; schedule(); }
+      else if (seg === 'vangle') { view.angle = val; [view.yaw, view.pitch] = ANGLES[val]; schedule(); }
+    });
+  }
+
+  /* ---------- Front view ---------- */
+
+  /** Outline color for the model's silhouette: the page's ink, so it reads on either theme. */
+  function silhouette() {
+    const v = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
+    const m = v.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [42, 30, 22];
+  }
+
+  const frontR = new RN.Renderer($('#front-canvas'));
+  const charW = 7.6;
+  function chipW(text) { return Math.round(text.length * charW + 16); }
+  function chip(path, x, y, text, label) {
+    const calc = GROUP[path] === state.solve, w = chipW(text);
+    return `<g class="chip${calc ? ' calc' : ''}" data-path="${path}" tabindex="0" role="button" aria-label="${esc(label)}: ${esc(text)}${calc ? ', calculated' : ''}. Change">` +
+      `<title>${esc(label)}${calc ? ' (calculated)' : ''}</title>` +
+      `<rect x="${(x - w / 2).toFixed(1)}" y="${(y - 11).toFixed(1)}" width="${w}" height="22" rx="3"/>` +
+      `<text x="${x.toFixed(1)}" y="${(y + 4.5).toFixed(1)}" text-anchor="middle">${esc(text)}</text></g>`;
+  }
+  const tick = (x, y) => `<line class="dimtick" x1="${x - 4}" y1="${y + 4}" x2="${x + 4}" y2="${y - 4}"/>`;
+  const ln = (x1, y1, x2, y2, cls) => `<line class="${cls || 'dimline'}" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`;
+
+  function renderFront() {
+    const stage = $('#front-stage'), msg = $('#front-msg'), under = $('#front-under'), over = $('#front-over');
+    const W = stage.clientWidth;
+    if (!R.ok) {
+      stage.style.height = '320px';
+      msg.hidden = false;
+      msg.innerHTML = `<div><strong>These sizes don't make a frame yet.</strong><br>${R.warnings.filter(w => w.level === 'error').map(w => fr(w.text)).join('<br>')}</div>`;
+      under.innerHTML = over.innerHTML = '';
+      frontR.render({ faces: [] }, { yaw: 0, pitch: 0, scale: 1, cx: 0, cy: 0 }, { width: W, height: 320 });
+      return;
+    }
+    msg.hidden = true;
+    const d = R.dims, s = state;
+    const tOW = L(d.OW), tOH = L(d.OH);
+    const m = { l: Math.max(64, chipW(tOH) + 26), r: 22, t: 54, b: 24 };
+    const maxH = Math.max(300, Math.min(window.innerHeight * 0.72, 680));
+    let sc = (W - m.l - m.r) / d.OW;
+    let H = d.OH * sc + m.t + m.b;
+    if (H > maxH) { sc = (maxH - m.t - m.b) / d.OH; H = maxH; }
+    H = Math.round(H);
+    const ox = m.l + ((W - m.l - m.r) - d.OW * sc) / 2, oy = m.t + d.OH * sc;
+    const X = x => ox + x * sc, Y = y => oy - y * sc;
+    stage.style.height = H + 'px';
+    if (!frontPrep) { frontModel = G.buildModel(R, {}); frontPrep = RN.prepare(frontModel.solids); }
+    frontR.render(frontPrep, { yaw: 0, pitch: 0, scale: sc, cx: ox, cy: oy }, { width: W, height: H, silhouette: silhouette() });
+
+    for (const svg of [under, over]) { svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); }
+
+    // What sits in the rabbet: mat and artwork (drawn under the frame).
+    const gx0 = d.ws - d.R + d.c / 2, gy0 = d.wB - d.R + d.c / 2;
+    let u = '<defs><pattern id="arthatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="9" height="9" fill="var(--art-b)"/><rect width="3" height="9" fill="var(--art-a)"/></pattern></defs>';
+    const rect = (x0, y0, w, h, attrs) => `<rect x="${X(x0).toFixed(1)}" y="${Y(y0 + h).toFixed(1)}" width="${(w * sc).toFixed(1)}" height="${(h * sc).toFixed(1)}" ${attrs}/>`;
+    if (s.mat.on) {
+      u += rect(gx0, gy0, d.GW, d.GH, 'fill="var(--mat-board)"');
+      u += rect(gx0 + s.mat.side, gy0 + s.mat.bottom, d.MW, d.MH, 'fill="url(#arthatch)" stroke="rgba(0,0,0,.25)" stroke-width="1.5"');
+    } else {
+      u += rect(gx0, gy0, d.GW, d.GH, 'fill="url(#arthatch)"');
+    }
+    under.innerHTML = u;
+
+    // Hidden joinery, rabbet and dimensions (drawn over the frame).
+    let o = '';
+    o += `<rect class="rabbet-line" x="${X(d.ws - d.R).toFixed(1)}" y="${Y(d.OH - d.wT + d.R).toFixed(1)}" width="${(d.RW * sc).toFixed(1)}" height="${(d.RH * sc).toFixed(1)}"/>`;
+    for (const h of frontModel.hidden) {
+      const pts = h.pts.map(q => `${X(q[0]).toFixed(1)},${Y(q[1]).toFixed(1)}`).join(' ');
+      o += h.closed ? `<polygon class="hidden-line" points="${pts}"/>` : `<polyline class="hidden-line" points="${pts}"/>`;
+    }
+    // Outside width, above the frame
+    const yW = Y(d.OH) - 30;
+    o += ln(X(0), Y(d.OH) - 6, X(0), yW - 6) + ln(X(d.OW), Y(d.OH) - 6, X(d.OW), yW - 6) + ln(X(0), yW, X(d.OW), yW) + tick(X(0), yW) + tick(X(d.OW), yW);
+    o += chip('outside.w', X(d.OW / 2), yW, tOW, 'Outside width');
+    // Outside height, left of the frame
+    const xH = X(0) - 20;
+    o += ln(X(0) - 6, Y(0), xH - 6, Y(0)) + ln(X(0) - 6, Y(d.OH), xH - 6, Y(d.OH)) + ln(xH, Y(0), xH, Y(d.OH)) + tick(xH, Y(0)) + tick(xH, Y(d.OH));
+    o += chip('outside.h', Math.max(chipW(tOH) / 2 + 2, X(0) - 8 - chipW(tOH) / 2), Y(d.OH / 2), tOH, 'Outside height');
+    // Widths
+    const tS = L(d.ws), tT = L(d.wT), tB = L(d.wB);
+    const ys = Y(d.wB + d.SH * 0.22), xs0 = X(d.OW - d.ws), xs1 = X(d.OW);
+    o += ln(xs0, ys, xs1, ys) + tick(xs0, ys) + tick(xs1, ys);
+    const wS = chipW(tS);
+    const xsC = wS > (xs1 - xs0) + 8 ? xs1 - 2 - wS / 2 : (xs0 + xs1) / 2;
+    o += chip('stile', xsC, ys - 16, tS, 'Stile width');
+    const xr = X(d.OW * 0.74);
+    o += ln(xr, Y(d.OH), xr, Y(d.OH - d.wT)) + tick(xr, Y(d.OH)) + tick(xr, Y(d.OH - d.wT));
+    o += chip('top', xr, Y(d.OH - d.wT / 2), tT, 'Top rail width');
+    o += ln(xr, Y(0), xr, Y(d.wB)) + tick(xr, Y(0)) + tick(xr, Y(d.wB));
+    o += chip('bottom', xr, Y(d.wB / 2), tB, 'Bottom rail width');
+    // Inside size, in the middle of the opening
+    const cx = X(d.OW / 2), cy = Y(d.wB + d.SH / 2);
+    const tw = L(s.inner.w), th = L(s.inner.h);
+    const ww = chipW(tw), wh = chipW(th);
+    const word = { Artwork: 'Artwork', Image: 'Image', Opening: 'Visible opening' }[innerWord()];
+    const sub = s.innerRef === 'sight' ? `glass ${L(d.GW)} × ${L(d.GH)}` : s.mat.on ? `mat window ${L(d.MW)} × ${L(d.MH)}` : `opening ${L(d.SW)} × ${L(d.SH)}`;
+    // Drop the secondary line when the opening is too narrow on screen to hold it.
+    const roomy = sub.length * 7.1 + 20 <= d.SW * sc - 12;
+    const boxW = Math.max(ww + wh + 40, roomy ? sub.length * 7.1 + 20 : 0, 120);
+    o += `<rect class="label-bg" x="${(cx - boxW / 2).toFixed(1)}" y="${(cy - 38).toFixed(1)}" width="${boxW.toFixed(1)}" height="${roomy ? 76 : 54}" rx="4"/>`;
+    o += `<text class="center-label" x="${cx.toFixed(1)}" y="${(cy - 20).toFixed(1)}" text-anchor="middle">${esc(word)}</text>`;
+    o += chip('inner.w', cx - 10 - ww / 2, cy, tw, `${innerWord()} width`);
+    o += `<text class="center-sub" x="${cx.toFixed(1)}" y="${(cy + 4).toFixed(1)}" text-anchor="middle">×</text>`;
+    o += chip('inner.h', cx + 10 + wh / 2, cy, th, `${innerWord()} height`);
+    if (roomy) o += `<text class="center-sub" x="${cx.toFixed(1)}" y="${(cy + 28).toFixed(1)}" text-anchor="middle">${esc(sub)}</text>`;
+    over.innerHTML = o;
+  }
+
+  function bindFront() {
+    const over = $('#front-over');
+    const open = e => {
+      const g = e.target.closest('.chip');
+      if (!g) return;
+      e.preventDefault();
+      openEditor(g.dataset.path, g);
+    };
+    over.addEventListener('click', open);
+    over.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') open(e); });
+  }
+
+  /* ---------- Dimension editor ---------- */
+
+  const ed = { path: null };
+  function openEditor(path, anchor) {
+    ed.path = path;
+    const box = $('#editor'), input = $('#ed-input');
+    $('#ed-label').textContent = LABELS[path]();
+    input.value = Lplain(getPath(state, path));
+    input.setAttribute('inputmode', state.units === 'mm' ? 'decimal' : 'text');
+    const calc = GROUP[path] === state.solve;
+    $('#ed-note').textContent = calc
+      ? `This size is calculated now. Setting it will calculate ${solveName(ALT[GROUP[path]])} instead.`
+      : GROUP[path] === 'widths' && state.linkWidths ? 'All four members change together. Untick "Same width all round" to set them separately.' : '';
+    $('#ed-err').hidden = true;
+    const frs = state.units === 'mm' ? [] : [['0', 0], ['1/8', 0.125], ['1/4', 0.25], ['3/8', 0.375], ['1/2', 0.5], ['5/8', 0.625], ['3/4', 0.75], ['7/8', 0.875]];
+    $('#ed-fr').innerHTML = frs.map(([t, v]) => `<button type="button" data-frac="${v}" aria-label="Set the fraction to ${t}">${t === '0' ? 'whole' : t}</button>`).join('');
+    $('#ed-fr').hidden = !frs.length;
+    const nudges = state.units === 'mm' ? [[-1, '−1'], [-0.5, '−0.5'], [0.5, '+0.5'], [1, '+1']].map(([v, t]) => [v / C.MM, `${t} mm`])
+      : [[-0.125, '−1/8'], [-0.0625, '−1/16'], [0.0625, '+1/16'], [0.125, '+1/8']];
+    $('#ed-nudge').innerHTML = nudges.map(([v, t]) => `<button type="button" data-nudge="${v}">${t}</button>`).join('');
+    box.hidden = false;
+    const r = anchor.getBoundingClientRect(), bw = box.offsetWidth, bh = box.offsetHeight;
+    let left = clamp(r.left + r.width / 2 - bw / 2, 12, window.innerWidth - bw - 12);
+    let top = r.bottom + 8;
+    if (top + bh > window.innerHeight - 12) top = Math.max(12, r.top - bh - 8);
+    box.style.left = left + 'px';
+    box.style.top = top + 'px';
+    input.focus();
+    input.select();
+  }
+  function closeEditor(refocus) {
+    const path = ed.path;
+    $('#editor').hidden = true;
+    ed.path = null;
+    if (refocus && path) { const g = $(`#front-over .chip[data-path="${path}"]`); if (g) g.focus(); }
+  }
+  function commitEditor() {
+    const input = $('#ed-input');
+    const v = parse(input.value);
+    if (!isFinite(v) || v <= 0) {
+      const err = $('#ed-err');
+      err.textContent = `Can't read "${input.value}". Try 11 3/4, 11.75 or 298 mm.`;
+      err.hidden = false;
+      return;
+    }
+    const path = ed.path;
+    closeEditor(false);
+    setLen(path, v);
+    requestAnimationFrame(() => requestAnimationFrame(() => { const g = $(`#front-over .chip[data-path="${path}"]`); if (g) g.focus(); }));
+  }
+  function bindEditor() {
+    const box = $('#editor'), input = $('#ed-input');
+    $('#ed-ok').addEventListener('click', commitEditor);
+    $('#ed-cancel').addEventListener('click', () => closeEditor(true));
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commitEditor(); }
+      if (e.key === 'Escape') { e.preventDefault(); closeEditor(true); }
+    });
+    box.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditor(true); });
+    box.addEventListener('click', e => {
+      const f = e.target.closest('[data-frac]'), n = e.target.closest('[data-nudge]');
+      if (!f && !n) return;
+      let v = parse(input.value);
+      if (!isFinite(v)) v = getPath(state, ed.path);
+      if (f) v = Math.floor(v + 1e-9) + +f.dataset.frac;
+      if (n) v = Math.max(0, v + +n.dataset.nudge);
+      input.value = Lplain(v);
+      input.focus();
+    });
+    document.addEventListener('pointerdown', e => {
+      if (!box.hidden && !box.contains(e.target) && !e.target.closest('.chip')) closeEditor(false);
+    });
+  }
+
+  /* ---------- Corner model ---------- */
+
+  const cornerR = new RN.Renderer($('#corner-canvas'));
+  function cornerSize() { const st = $('#corner-stage'); return [st.clientWidth, st.clientHeight]; }
+  function renderCorner(fast) {
+    const msg = $('#corner-msg');
+    const [W, H] = cornerSize();
+    if (!R.ok) {
+      msg.hidden = false;
+      msg.textContent = 'Fix the size problems above to see the joint.';
+      cornerR.render({ faces: [] }, { yaw: 0, pitch: 0, scale: 1, cx: 0, cy: 0 }, { width: W, height: H });
+      return;
+    }
+    msg.hidden = true;
+    const key = `${view.mode}|${view.explode}`;
+    if (!cornerPrep || cornerKey !== key) {
+      cornerPrep = RN.prepare(G.buildModel(R, { corner: view.mode === 'corner', explode: view.explode }).solids);
+      cornerKey = key;
+    }
+    const cam = RN.fit(cornerPrep, view.yaw, view.pitch, W, H, 16, view.dragging ? view.dragScale : null);
+    cornerR.render(cornerPrep, cam, { width: W, height: H, res: fast ? 1 : undefined, silhouette: silhouette() });
+  }
+  let fastRaf = 0;
+  function requestFast() {
+    if (!fastRaf) fastRaf = requestAnimationFrame(() => { fastRaf = 0; renderCorner(true); });
+  }
+  function bindCorner() {
+    const st = $('#corner-stage');
+    st.addEventListener('pointerdown', e => {
+      if (!cornerPrep) return;
+      const [W, H] = cornerSize();
+      view.dragging = true;
+      view.lx = e.clientX; view.ly = e.clientY;
+      view.dragScale = RN.fit(cornerPrep, view.yaw, view.pitch, W, H, 16).scale;
+      st.setPointerCapture(e.pointerId);
+    });
+    st.addEventListener('pointermove', e => {
+      if (!view.dragging) return;
+      view.yaw += (e.clientX - view.lx) * 0.01;
+      view.pitch = clamp(view.pitch + (e.clientY - view.ly) * 0.01, -1.5, 1.5);
+      view.lx = e.clientX; view.ly = e.clientY;
+      if (view.angle) { view.angle = null; setSeg('vangle', null); }
+      requestFast();
+    });
+    const end = () => { if (!view.dragging) return; view.dragging = false; renderCorner(false); };
+    st.addEventListener('pointerup', end);
+    st.addEventListener('pointercancel', end);
+    const ex = $('#explode');
+    ex.value = view.explode;
+    ex.addEventListener('input', () => { view.explode = +ex.value; requestFast(); });
+    ex.addEventListener('change', () => { view.explode = +ex.value; renderCorner(false); });
+  }
+
+  /* ---------- Results ---------- */
+
+  function renderResults() {
+    const s = state, d = R.dims;
+    $('#warnings').innerHTML = R.warnings.map(w =>
+      `<div class="warn ${w.level}"><b>${w.level === 'error' ? 'Fix' : 'Check'}</b><span>${fr(w.text)}</span></div>`).join('');
+    const items = [['Outside', `${L(d.OW)} × ${L(d.OH)}`], ['Visible opening', `${L(d.SW)} × ${L(d.SH)}`],
+      ['Rabbet opening', `${L(d.RW)} × ${L(d.RH)}`], ['Glass and backer', `${L(d.GW)} × ${L(d.GH)}`]];
+    if (s.mat.on) items.push(['Image', `${L(d.IW)} × ${L(d.IH)}`], ['Mat window', `${L(d.MW)} × ${L(d.MH)}`]);
+    $('#sum').innerHTML = items.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${fr(v)}</dd></div>`).join('');
+    $('#bar-sum').innerHTML = `${esc(R.joint.name)} · ${fr(`${L(d.OW)} × ${L(d.OH)}`)}`;
+    $('#cut-sub').textContent = `${R.joint.name} frame${s.qty > 1 ? ` · ${s.qty} frames` : ''}`;
+    if (!R.ok) {
+      $('#cuts').innerHTML = ''; $('#cut-note').textContent = ''; $('#cards').innerHTML = ''; $('#mats').innerHTML = '';
+      $('#layout').innerHTML = ''; $('#stock-sum').textContent = ''; $('#stock-sub').textContent = ''; $('#steps-list').innerHTML = '';
+      return;
+    }
+    const hasShort = R.rows.some(r => r.short != null), hasRab = R.rows.some(r => r.atRabbet != null), hasSh = R.rows.some(r => r.shoulder != null);
+    const hasNotes = R.rows.some(r => r.notes);
+    let t = '<thead><tr><th>Part</th><th class="n">Qty</th><th>Length</th>';
+    if (hasShort) t += '<th>Short point</th>';
+    if (hasRab) t += '<th>On rabbet</th>';
+    if (hasSh) t += '<th>Shoulders</th>';
+    t += '<th>Width × thick</th><th>Ends</th>';
+    if (hasNotes) t += '<th>Joinery</th>';
+    t += '</tr></thead><tbody>';
+    const cell = (cls, label, html) => html ? `<td class="${cls}" data-label="${label}">${html}</td>` : `<td class="${cls} empty"></td>`;
+    for (const r of R.rows) {
+      t += `<tr><td class="part">${esc(r.name)}</td><td class="n" data-label="Qty">${r.qtyTotal}</td><td class="len">${fr(L(r.length))}</td>`;
+      if (hasShort) t += cell('mono', 'Short point', r.short != null ? fr(L(r.short)) : '');
+      if (hasRab) t += cell('mono', 'On rabbet', r.atRabbet != null ? fr(L(r.atRabbet)) : '');
+      if (hasSh) t += cell('mono', 'Shoulders', r.shoulder != null ? fr(L(r.shoulder)) : '');
+      t += cell('mono', 'Section', fr(`${L(r.width)} × ${L(r.thick)}`)) + cell('ends', 'Ends', fr(r.ends || ''));
+      if (hasNotes) t += cell('notes', 'Joinery', fr(r.notes || ''));
+      t += '</tr>';
+    }
+    $('#cuts').innerHTML = t + '</tbody>';
+    $('#cut-note').innerHTML = fr(R.lengthNote || '');
+    $('#cards').innerHTML = R.cards.map(c => `<div class="card"><h4>${esc(c.title)}</h4><ul>${c.lines.map(l => `<li>${fr(l)}</li>`).join('')}</ul></div>`).join('');
+    $('#mats').innerHTML = '<thead><tr><th>Item</th><th class="n">Qty</th><th>Size and notes</th></tr></thead><tbody>' +
+      R.materials.map(m => `<tr><td>${esc(m.name)}</td><td class="n">${m.qty}</td><td>${m.size ? `<span class="size">${fr(m.size)}</span><br>` : ''}<span class="meta">${fr(m.note || '')}</span></td></tr>`).join('') + '</tbody>';
+    renderLayout();
+    $('#steps-list').innerHTML = R.steps.map(x => `<li>${fr(x)}</li>`).join('');
+  }
+
+  function renderLayout() {
+    const lay = R.layout, box = $('#layout');
+    const W = Math.max(280, box.clientWidth || 600);
+    const labelW = 62, barW = W - labelW - 2, k = barW / lay.boardLength;
+    const rowH = 30, gap = 12;
+    const s = state;
+    $('#stock-sub').textContent = `${plural(lay.totalBoards, 'board')} of ${L(lay.boardLength)}`;
+    let sum = `${plural(lay.totalBoards, 'board')}, ${Math.round(lay.waste * 100)}% left over as offcuts and kerf.`;
+    if (s.joint === 'miter') sum += ` Buying molding? The usual rule of thumb is the perimeter plus 8 × the width: ${s.units === 'mm' ? L(lay.moldingRule) : `${(lay.moldingRule / 12).toFixed(1)} ft`}.`;
+    $('#stock-sum').innerHTML = fr(sum);
+    box.innerHTML = lay.groups.map((g, gi) => {
+      const h = g.boards.length * (rowH + gap) + 2;
+      let svg = `<svg class="board-svg" width="${W}" height="${h}" viewBox="0 0 ${W} ${h}" role="img" aria-label="${esc(`${g.boards.length} board layout for ${L(g.width)} stock`)}">`;
+      svg += `<defs><pattern id="hatch${gi}" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="var(--panel)"/><rect width="2" height="7" fill="var(--line)"/></pattern></defs>`;
+      g.boards.forEach((b, bi) => {
+        const y = bi * (rowH + gap) + 1;
+        svg += `<text class="bl" x="0" y="${y + rowH / 2 + 4}">Board ${bi + 1}</text>`;
+        svg += `<rect class="stock" x="${labelW}" y="${y}" width="${barW}" height="${rowH}" rx="2"/>`;
+        if (lay.trim > 0) svg += `<rect x="${labelW}" y="${y}" width="${(lay.trim * k).toFixed(1)}" height="${rowH}" fill="url(#hatch${gi})"/>`;
+        for (const c of b.cuts) {
+          const x0 = labelW + c.start * k, x1 = labelW + (c.start + c.length) * k;
+          const i0 = Math.tan(c.angles[0] / C.DEG) * c.width * k, i1 = Math.tan(c.angles[1] / C.DEG) * c.width * k;
+          const cls = b.over ? 'piece over' : c.label === 'Side' ? 'piece alt' : 'piece';
+          svg += `<polygon class="${cls}" points="${x0.toFixed(1)},${y} ${x1.toFixed(1)},${y} ${(x1 - i1).toFixed(1)},${y + rowH} ${(x0 + i0).toFixed(1)},${y + rowH}"><title>${esc(`${c.label}, ${L(c.length)}`)}</title></polygon>`;
+          const label = `${c.label} ${Lplain(c.length)}`, short = Lplain(c.length);
+          const room = (x1 - x0) - Math.max(i0, i1);
+          const text = room > label.length * 6.9 + 8 ? label : room > short.length * 6.9 + 6 ? short : '';
+          if (text) svg += `<text class="pl${c.label === 'Side' ? ' on-dark' : ''}" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + rowH / 2 + 4}" text-anchor="middle">${esc(text)}</text>`;
+        }
+        if (b.over) svg += `<text class="ol" x="${labelW + barW - 4}" y="${y + rowH / 2 + 4}" text-anchor="end">longer than the board</text>`;
+        else if (b.remainder > 0.01) {
+          const xo = labelW + (lay.trim + b.used) * k, wo = b.remainder * k;
+          svg += `<rect class="off" x="${xo.toFixed(1)}" y="${y}" width="${wo.toFixed(1)}" height="${rowH}" fill="url(#hatch${gi})"/>`;
+          const ot = `offcut ${Lplain(b.remainder)}`;
+          if (wo > ot.length * 6.9 + 8) svg += `<text class="ol" x="${(xo + wo / 2).toFixed(1)}" y="${y + rowH / 2 + 4}" text-anchor="middle">${esc(ot)}</text>`;
+        }
+      });
+      svg += '</svg>';
+      const bf = s.units === 'mm' ? `${(g.boards.length * g.thick * g.width * lay.boardLength * Math.pow(C.MM / 1000, 3) * 1000).toFixed(2)} L` : `${g.boardFeet.toFixed(2)} board feet`;
+      return `<div class="lgroup"><h3>${fr(`${L(g.width)} × ${L(g.thick)} stock`)}</h3><p class="meta">${fr(`${plural(g.boards.length, 'board')} · ${L(g.linear)} of parts · ${bf}`)}</p>${svg}</div>`;
+    }).join('');
+  }
+
+  /* ---------- Copy, save, share ---------- */
+
+  function cutListText() {
+    const s = state, d = R.dims;
+    const out = [`Framewright: ${R.joint.name} frame${s.qty > 1 ? ` (${s.qty} frames)` : ''}`,
+      `Outside ${L(d.OW)} x ${L(d.OH)}   Opening ${L(d.SW)} x ${L(d.SH)}   Glass ${L(d.GW)} x ${L(d.GH)}`,
+      `Stock ${L(d.T)} thick, rabbet ${L(d.R)} x ${L(d.D)}`, ''];
+    const rows = [['Part', 'Qty', 'Length', 'Width', 'Ends', 'Joinery']]
+      .concat(R.rows.map(r => [r.name, String(r.qtyTotal), L(r.length), L(r.width), r.ends || '', r.notes || '']));
+    const w = rows[0].map((_, i) => Math.max(...rows.map(r => r[i].length)));
+    for (const r of rows) out.push(r.map((c, i) => c.padEnd(w[i])).join('  ').trimEnd());
+    if (R.lengthNote) out.push(R.lengthNote);
+    for (const c of R.cards) { out.push('', c.title); for (const l of c.lines) out.push(`- ${l}`); }
+    out.push('', 'Materials');
+    for (const m of R.materials) out.push(`- ${m.qty} x ${m.name}${m.size ? `, ${m.size}` : ''}${m.note ? ` (${m.note})` : ''}`);
+    out.push('', 'Steps');
+    R.steps.forEach((x, i) => out.push(`${i + 1}. ${x}`));
+    return out.join('\n');
+  }
+  function copyText(text, done) {
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      toast(ok ? done : 'Copying is blocked here. Select the text on the page and copy it yourself.');
+    };
+    try { navigator.clipboard.writeText(text).then(() => toast(done), fallback); } catch (e) { fallback(); }
+  }
+
+  function savedList() { return store.get(KEY_SAVED) || []; }
+  function renderDesigns() {
+    const list = savedList();
+    $('#design-list').innerHTML = list.map((x, i) =>
+      `<li><span class="name">${esc(x.name)}</span><span class="meta">${fr(x.summary || '')}</span><button type="button" class="btn" data-load="${i}">Open</button><button type="button" class="btn" data-del="${i}">Delete</button></li>`).join('');
+    $('#design-empty').textContent = list.length ? 'Saved designs stay in this browser on this device.' : 'Nothing saved yet. Saved designs stay in this browser on this device.';
+  }
+  function bindHeader() {
+    const panel = $('#designs'), btn = $('#btn-designs');
+    btn.addEventListener('click', () => {
+      panel.hidden = !panel.hidden;
+      btn.setAttribute('aria-expanded', String(!panel.hidden));
+      if (!panel.hidden) { renderDesigns(); $('#save-name').focus(); }
+    });
+    $('#save-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const d = R.dims;
+      const summary = `${R.joint.name} · ${L(d.OW)} × ${L(d.OH)}`;
+      const name = $('#save-name').value.trim() || summary;
+      const list = savedList();
+      list.unshift({ name, summary, state, saved: Date.now() });
+      store.set(KEY_SAVED, list.slice(0, 50));
+      $('#save-name').value = '';
+      renderDesigns();
+      toast(`Saved "${name}"`);
+    });
+    $('#design-list').addEventListener('click', e => {
+      const lo = e.target.closest('[data-load]'), de = e.target.closest('[data-del]');
+      const list = savedList();
+      if (lo) {
+        const x = list[+lo.dataset.load];
+        if (!x) return;
+        state = C.normalizeState(x.state);
+        recompute();
+        store.set(KEY_CUR, state);
+        toast(`Opened "${x.name}"`);
+      } else if (de) {
+        if (de.dataset.confirm !== '1') { de.dataset.confirm = '1'; de.textContent = 'Confirm delete'; return; }
+        list.splice(+de.dataset.del, 1);
+        store.set(KEY_SAVED, list);
+        renderDesigns();
+      }
+    });
+    $('#btn-copy').addEventListener('click', () => { if (R.ok) copyText(cutListText(), 'Cut list copied'); });
+    if (!inFrame) {
+      const link = $('#btn-link');
+      link.hidden = false;
+      link.addEventListener('click', () => copyText(`${location.href.split('#')[0]}#d=${encodeState(state)}`, 'Link to this design copied'));
+      const pr = $('#btn-print');
+      pr.hidden = false;
+      pr.addEventListener('click', () => window.print());
+      let deferred = null;
+      window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();
+        deferred = e;
+        $('#btn-install').hidden = false;
+      });
+      $('#btn-install').addEventListener('click', () => {
+        if (!deferred) return;
+        deferred.prompt();
+        deferred.userChoice.finally(() => { deferred = null; $('#btn-install').hidden = true; });
+      });
+      // Only the multi-file deploy ships sw.js; the single-file builds drop the manifest link.
+      if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && document.querySelector('link[rel="manifest"]')) {
+        navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ });
+      }
+    }
+  }
+
+  /* ---------- Render loop ---------- */
+
+  function renderAll() {
+    setSeg('units', state.units); setSeg('solve', state.solve); setSeg('innerRef', state.innerRef); setSeg('through', state.through);
+    setSeg('vmode', view.mode); setSeg('vangle', view.angle);
+    for (const b of $$('#joints .jcard')) b.setAttribute('aria-pressed', String(b.dataset.joint === state.joint));
+    $('#joint-blurb').textContent = R.joint.blurb;
+    renderJointFields();
+    renderForm();
+    renderFront();
+    renderCorner(false);
+    renderResults();
+  }
+
+  function init() {
+    buildJoints();
+    bindInspector();
+    bindSegs();
+    bindFront();
+    bindEditor();
+    bindCorner();
+    bindHeader();
+    recompute();
+    let lastW = 0;
+    const ro = new ResizeObserver(() => {
+      const w = $('#design').clientWidth;
+      if (Math.abs(w - lastW) > 1) { lastW = w; schedule(); }
+    });
+    ro.observe($('#design'));
+    try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', schedule); } catch (e) { /* older browsers */ }
+    setTimeout(drawThumbs, 30);
+  }
+  init();
+})();
+</script>
+</body>
+</html>

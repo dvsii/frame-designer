@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Framewright tests</title>
+<style>
+  body { font: 13px/1.4 ui-monospace, Menlo, monospace; margin: 16px; background: #f4f5f1; color: #1d2320; }
+  .fail { color: #b42318; font-weight: bold; }
+  .grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  figure { margin: 0; background: #fff; border: 1px solid #ccc; }
+  figcaption { padding: 2px 6px; }
+</style>
+</head>
+<body>
+<h1>Framewright tests</h1>
+<pre id="out"></pre>
+<div class="grid" id="views"></div>
+<script src="../js/core.js"></script>
+<script src="../js/geom.js"></script>
+<script src="../js/render.js"></script>
+<script>
+(function () {
+  const C = FWCore, G = FWGeom, RN = FWRender;
+  const out = document.getElementById('out');
+  let pass = 0, fail = 0;
+  const lines = [];
+  function ok(cond, name, detail) {
+    if (cond) pass++; else { fail++; lines.push(`FAIL ${name}${detail ? ' — ' + detail : ''}`); }
+  }
+  function close(a, b, name, tol) {
+    ok(Math.abs(a - b) <= (tol || 1e-6), name, `got ${a}, want ${b}`);
+  }
+  const state = over => Object.assign(C.defaultState(), over || {});
+  const run = over => C.compute(state(over));
+  const row = (R, key) => R.rows.find(r => r.key === key);
+
+  // Parsing
+  close(C.parseLen('11 3/4', 'in'), 11.75, 'parse 11 3/4');
+  close(C.parseLen('11-3/4', 'in'), 11.75, 'parse 11-3/4');
+  close(C.parseLen('11.75"', 'in'), 11.75, 'parse 11.75"');
+  close(C.parseLen('3/4', 'in'), 0.75, 'parse 3/4');
+  close(C.parseLen('298mm', 'in'), 298 / 25.4, 'parse 298mm');
+  close(C.parseLen('30 cm', 'in'), 300 / 25.4, 'parse 30 cm');
+  close(C.parseLen("1' 2 1/2\"", 'in'), 14.5, 'parse feet and inches');
+  close(C.parseLen('300', 'mm'), 300 / 25.4, 'parse bare number in mm mode');
+  close(C.parseLen('14 3/8"+', 'in'), 14.375, 'parse ignores the + mark');
+  ok(isNaN(C.parseLen('2 3', 'in')), 'parse rejects 2 3');
+  ok(isNaN(C.parseLen('abc', 'in')), 'parse rejects text');
+  ok(isNaN(C.parseLen('', 'in')), 'parse rejects empty');
+
+  // Formatting
+  ok(C.fmtLen(14.375, 'in', 16) === '14 3/8"', 'fmt 14 3/8', C.fmtLen(14.375, 'in', 16));
+  ok(C.fmtLen(14.4, 'in', 16) === '14 3/8"+', 'fmt marks a hair over', C.fmtLen(14.4, 'in', 16));
+  ok(C.fmtLen(0.5, 'in', 16) === '1/2"', 'fmt 1/2');
+  ok(C.fmtLen(14.375, 'mm', 0.5) === '365 mm', 'fmt mm', C.fmtLen(14.375, 'mm', 0.5));
+  ok(C.fmtLen(2, 'in', 16) === '2"', 'fmt whole');
+
+  // Default miter frame: 11 x 14 art, 2" members, 3/8 rabbet, 1/8 clearance
+  let R = run();
+  ok(R.ok, 'default computes without errors', JSON.stringify(R.warnings));
+  close(R.dims.OW, 14.375, 'outside width');
+  close(R.dims.OH, 17.375, 'outside height');
+  close(R.dims.SW, 10.375, 'sight width');
+  close(R.dims.RW, 11.125, 'rabbet opening width');
+  close(R.dims.GW, 11, 'glass width = art');
+  close(row(R, 'rails').length, 14.375, 'miter rail long point');
+  close(row(R, 'rails').short, 10.375, 'miter rail short point');
+  close(row(R, 'rails').atRabbet, 11.125, 'miter rail on rabbet');
+  close(row(R, 'stiles').length, 17.375, 'miter stile long point');
+  close(row(R, 'rails').angles[0], 45, 'miter 45');
+  ok(R.layout.totalBoards === 1, 'one 8 ft board');
+  close(R.layout.groups[0].boards[0].remainder, 96 - 63.5 - 4 * 0.125 * Math.SQRT2, 'remainder after 4 mitered pieces', 1e-6);
+
+  // Solve for the opening
+  R = run({ solve: 'opening', outside: { w: 16, h: 20 } });
+  close(R.state.inner.w, 12.625, 'art from outside width');
+  close(R.state.inner.h, 16.625, 'art from outside height');
+
+  // Solve for widths
+  R = run({ solve: 'widths', outside: { w: 16, h: 20 } });
+  close(R.state.stile, 2.8125, 'stile width from outside + art');
+  close(R.state.top, 3.3125, 'top rail from outside + art');
+  close(R.state.bottom, 3.3125, 'bottom rail from outside + art');
+
+  // Bottom-weighted rails keep their ratio when solving widths
+  R = run({ solve: 'widths', outside: { w: 16, h: 20 }, linkWidths: false, top: 2, bottom: 3 });
+  close(R.state.bottom / R.state.top, 1.5, 'ratio kept');
+
+  // Unequal widths on a miter
+  R = run({ linkWidths: false, stile: 2, top: 2, bottom: 3 });
+  close(row(R, 'bottom').angles[0], Math.atan2(2, 3) * 180 / Math.PI, 'bottom rail miter angle');
+  close(row(R, 'stiles').angles[1], Math.atan2(3, 2) * 180 / Math.PI, 'stile bottom angle');
+  close(row(R, 'top').angles[0] + row(R, 'stiles').angles[0], 90, 'angles at a corner sum to 90');
+
+  // Mat
+  R = run({ mat: { on: true, side: 2, top: 2, bottom: 2.5, overlap: 0.125 }, inner: { w: 8, h: 10 } });
+  close(R.dims.GW, 11.75, 'glass width with mat');
+  close(R.dims.GH, 14.25, 'glass height with mat');
+  close(R.dims.MW, 7.75, 'mat window width');
+
+  // Butt joint lengths
+  R = run({ joint: 'butt' });
+  close(row(R, 'rails').length, 10.375, 'butt rails between stiles');
+  close(row(R, 'stiles').length, 17.375, 'butt stiles full height');
+  R = run({ joint: 'butt', through: 'rails' });
+  close(row(R, 'rails').length, 14.375, 'butt rails through');
+  close(row(R, 'stiles').length, 13.375, 'butt stiles between rails');
+
+  // Mortise and tenon
+  R = run({ joint: 'mortise' });
+  close(R.params.tenonLen, 1.3125, 'auto tenon length');
+  close(row(R, 'rails').length, 10.375 + 2 * 1.3125, 'M&T rail length');
+  close(row(R, 'rails').shoulder, 10.375, 'M&T shoulder');
+
+  // Tongue and groove, cope and stick
+  R = run({ joint: 'tongue' });
+  close(row(R, 'rails').length, 11.125, 'T&G rails');
+  R = run({ joint: 'cope' });
+  close(row(R, 'rails').length, 11.125, 'cope rails');
+
+  // Laps and bridles run full length
+  for (const j of ['halflap', 'mitredlap', 'bridle']) {
+    R = run({ joint: j });
+    close(row(R, 'rails').length, 14.375, `${j} rails full`);
+    close(row(R, 'stiles').length, 17.375, `${j} stiles full`);
+  }
+
+  // Layout: many frames spill onto more boards; FFD packs no worse than grain order
+  R = run({ qty: 4 });
+  const grainBoards = R.layout.totalBoards;
+  R = run({ qty: 4, stock: { length: 96, kerf: 0.125, trim: 0, grain: false } });
+  ok(R.layout.totalBoards <= grainBoards, 'FFD uses no more boards', `${R.layout.totalBoards} vs ${grainBoards}`);
+  R = run({ inner: { w: 100, h: 14 } });
+  ok(R.layout.over, 'piece longer than board flagged');
+
+  // Errors
+  R = run({ stile: 0.3 });
+  ok(!R.ok, 'member narrower than the rabbet is an error');
+
+  // Geometry
+  const frameVol = d => (d.OW * d.OH - d.SW * d.SH) * d.T - (d.RW * d.RH - d.SW * d.SH) * d.D;
+  const woodVol = M => M.solids.filter(S => S.mat === 'rail' || S.mat === 'stile').reduce((a, S) => a + G.volume(S), 0);
+  for (const j of C.JOINTS) {
+    for (const through of ['stiles', 'rails']) {
+      if (!j.through && through === 'rails') continue;
+      const over = { joint: j.id, through, jp: { miterReinf: 'none', buttReinf: 'pocket' } };
+      R = run(over);
+      let M;
+      try { M = G.buildModel(R, {}); } catch (e) { ok(false, `build ${j.id}/${through}`, e.stack); continue; }
+      const bad = M.solids.some(S => S.faces.some(f => f.length < 3 || f.some(p => p.some(v => !isFinite(v)))));
+      ok(!bad, `${j.id}/${through} faces valid`);
+      ok(M.solids.length >= 4, `${j.id}/${through} has solids`);
+      if (['miter', 'halflap', 'mitredlap', 'bridle'].includes(j.id)) {
+        close(woodVol(M), frameVol(R.dims), `${j.id}/${through} wood volume`, 1e-6);
+      }
+      const corner = G.buildModel(R, { corner: true, explode: 0.6 });
+      ok(corner.solids.length > 0, `${j.id}/${through} corner model`);
+    }
+  }
+  // Reinforcements build
+  for (const r of ['keys', 'vnails', 'biscuits']) {
+    const M = G.buildModel(run({ jp: { miterReinf: r } }), { corner: true, explode: 0.5 });
+    ok(M.solids.some(S => S.mat !== 'rail' && S.mat !== 'stile'), `miter ${r} adds hardware`);
+  }
+  for (const r of ['dowels', 'biscuits', 'pocket', 'domino']) {
+    const M = G.buildModel(run({ joint: 'butt', inner: { w: 11, h: 14 }, stile: 2.5, top: 2.5, bottom: 2.5, jp: { buttReinf: r } }), { corner: true, explode: 0.5 });
+    ok(M.solids.some(S => S.mat === 'hw' || S.mat === 'metal'), `butt ${r} adds hardware`);
+  }
+  // Keys: total volume of wood + keys still equals the frame
+  {
+    R = run({ jp: { miterReinf: 'keys' } });
+    const M = G.buildModel(R, {});
+    const all = M.solids.reduce((a, S) => a + G.volume(S), 0);
+    close(all, frameVol(R.dims), 'keys fill their slots exactly', 1e-6);
+  }
+
+  // Render each joint's corner so the shapes can be checked by eye.
+  const views = document.getElementById('views');
+  const t0 = performance.now();
+  for (const j of C.JOINTS) {
+    for (const through of j.through ? ['stiles', 'rails'] : ['stiles']) {
+      const reinf = j.id === 'butt' ? 'dowels' : 'keys';
+      R = run({ joint: j.id, through, jp: { miterReinf: reinf, buttReinf: reinf } });
+      for (const [label, ex, yaw, pitch] of [['assembled', 0, 0.55, 0.42], ['exploded', 0.7, 0.55, 0.42], ['back', 0.7, Math.PI - 0.55, 0.42]]) {
+        const fig = document.createElement('figure');
+        const cv = document.createElement('canvas');
+        fig.appendChild(cv);
+        const cap = document.createElement('figcaption');
+        cap.textContent = `${j.id} / ${through} / ${label}`;
+        fig.appendChild(cap);
+        views.appendChild(fig);
+        const prep = RN.prepare(G.buildModel(R, { corner: true, explode: ex }).solids);
+        const cam = RN.fit(prep, yaw, pitch, 260, 190, 10);
+        new RN.Renderer(cv).render(prep, cam, { width: 260, height: 190, res: 2 });
+      }
+    }
+  }
+  // Whole frame, front view
+  {
+    R = run({ joint: 'mortise' });
+    const prep = RN.prepare(G.buildModel(R, {}).solids);
+    const fig = document.createElement('figure');
+    const cv = document.createElement('canvas');
+    fig.appendChild(cv);
+    views.appendChild(fig);
+    new RN.Renderer(cv).render(prep, RN.fit(prep, 0, 0, 260, 300, 10), { width: 260, height: 300, res: 2 });
+  }
+  const ms = performance.now() - t0;
+
+  lines.unshift(`${pass} passed, ${fail} failed. Rendered views in ${ms.toFixed(0)} ms.`);
+  out.innerHTML = lines.map(l => l.startsWith('FAIL') ? `<span class="fail">${l.replace(/</g, '&lt;')}</span>` : l).join('\n');
+  document.title = fail ? `FAIL ${fail}` : `PASS ${pass}`;
+})();
+</script>
+</body>
+</html>

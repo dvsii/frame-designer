@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Framewright</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Design a picture frame by its dimensions and get the cut list, joinery details and stock layout for eight traditional frame joints.">
+<!-- standalone:start -->
+<meta name="theme-color" content="#1c211e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Framewright">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<!-- standalone:end -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  /* Layout: a shop drawing on the left (front elevation, corner model), the spec sheet on the right, the cut sheet below. */
+  --bg: #e8eae3;
+  --panel: #f7f8f4;
+  --sunk: #dde1d8;
+  --ink: #1c211e;
+  --muted: #58615a;
+  --line: #c4cbc0;
+  --tape: #f3c22f;
+  --tape-ink: #241d05;
+  --warn: #9a4a0e;
+  --warn-bg: #f6e3cf;
+  --error: #b42318;
+  --error-bg: #f7dcd8;
+  --mat-board: #f5f2e9;
+  --art-a: #b2c0b1;
+  --art-b: #cdd6ca;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r: 5px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121513; --panel: #1a1e1b; --sunk: #0e100f; --ink: #e4e8e2; --muted: #98a299; --line: #313833;
+    --tape: #f3c22f; --tape-ink: #241d05; --warn: #f3a35e; --warn-bg: #3a2716; --error: #f2786d; --error-bg: #3d1c19;
+    --mat-board: #d8d3c5; --art-a: #56655a; --art-b: #66746a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121513; --panel: #1a1e1b; --sunk: #0e100f; --ink: #e4e8e2; --muted: #98a299; --line: #313833;
+  --tape: #f3c22f; --tape-ink: #241d05; --warn: #f3a35e; --warn-bg: #3a2716; --error: #f2786d; --error-bg: #3d1c19;
+  --mat-board: #d8d3c5; --art-a: #56655a; --art-b: #66746a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.45 var(--font-body); }
+button, input, select { font: inherit; color: inherit; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; margin: 0; text-wrap: balance; }
+h2 { font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
+h3 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.num, input[data-path], input[data-jp], #ed-input { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.fr { font-size: 0.78em; white-space: nowrap; }
+.fr sup, .fr sub { font-size: 1em; line-height: 0; }
+.fr sup { vertical-align: 0.45em; }
+.fr sub { vertical-align: -0.05em; }
+.mk { color: var(--muted); font-size: 0.85em; margin-left: 1px; }
+
+.wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 56px; }
+
+/* Header */
+.top { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; padding-block: 16px 12px; }
+.brand { display: flex; align-items: center; gap: 12px; margin-right: auto; min-width: 0; }
+.brand .mark { width: 38px; height: 38px; flex: none; }
+.brand h1 { font-size: 26px; font-weight: 700; line-height: 1; text-transform: uppercase; letter-spacing: 0.02em; }
+.brand p { margin: 3px 0 0; color: var(--muted); font-size: 13.5px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 6px 12px; cursor: pointer; font-weight: 500; font-size: 14px; line-height: 1.3; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); padding: 2px; gap: 2px; }
+.seg button { border: 0; background: transparent; border-radius: 3px; padding: 4px 10px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg-wide { display: flex; }
+.seg-wide button { flex: 1; padding-inline: 6px; }
+
+/* Designs popover */
+.designs { border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 12px; margin-bottom: 12px; display: grid; gap: 10px; }
+.designs form { display: flex; gap: 8px; flex-wrap: wrap; }
+.designs input { flex: 1 1 200px; min-width: 0; border: 1px solid var(--line); border-radius: var(--r); padding: 6px 10px; background: var(--bg); }
+.designs ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.designs li { display: flex; gap: 8px; align-items: center; padding: 4px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.designs li .name { flex: 1 1 160px; min-width: 0; font-weight: 500; }
+.designs li .meta { color: var(--muted); font-size: 13px; }
+.designs .empty { color: var(--muted); margin: 0; }
+
+/* Sticky section bar */
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap;
+  background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border-block: 1px solid var(--line); padding-block: 7px; margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding-inline: max(16px, env(safe-area-inset-left, 0px)); }
+.bar-sum { margin-right: auto; font-family: var(--font-num); font-size: 13px; color: var(--ink); min-width: 0; }
+.bar a { color: var(--muted); text-decoration: none; font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
+.bar a:hover { color: var(--ink); }
+
+/* Joint picker */
+section { scroll-margin-top: 56px; }
+#design { padding-top: 16px; }
+.joints { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.jcard { flex: 0 0 auto; width: 132px; scroll-snap-align: start; border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 4px 4px 7px; text-align: left; cursor: pointer; display: grid; gap: 2px; }
+.jcard:hover { border-color: var(--muted); }
+.jcard canvas { width: 122px; height: 76px; display: block; }
+.jcard span { font-family: var(--font-display); font-weight: 600; font-size: 14px; padding-inline: 4px; line-height: 1.15; }
+.jcard[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 -4px 0 var(--tape); }
+.joint-blurb { margin: 6px 0 14px; color: var(--muted); max-width: 70ch; }
+
+/* Work area */
+.work { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.stage { display: grid; gap: 16px; min-width: 0; }
+@media (min-width: 1040px) {
+  .work { grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.85fr); align-items: start; }
+  .inspector { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 52px); max-height: calc(100vh - 68px); overflow: auto; }
+}
+.panel { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); min-width: 0; }
+.panel-head { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.panel-head .hint { color: var(--muted); font-size: 13px; margin-left: auto; }
+.front-stage { position: relative; width: 100%; height: 420px; overflow: hidden; }
+.front-stage .layer { position: absolute; left: 0; top: 0; }
+#front-over { overflow: visible; }
+.stage-msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); }
+.legend { display: flex; gap: 6px 16px; flex-wrap: wrap; padding: 8px 12px 10px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 18px; height: 12px; border-radius: 2px; display: inline-block; border: 1px solid rgba(0,0,0,.25); }
+.sw-tape { background: var(--tape); }
+.sw-calc { background: transparent; border: 1px dashed var(--muted); }
+.sw-hidden { border: 0; border-top: 1.5px dashed var(--muted); height: 0; width: 18px; }
+
+/* Dimension chips in the SVG overlay */
+.dimline { stroke: var(--muted); stroke-width: 1; fill: none; }
+.dimtick { stroke: var(--ink); stroke-width: 1.4; }
+.hidden-line { stroke: var(--ink); stroke-opacity: .55; stroke-width: 1; stroke-dasharray: 4 3; fill: none; }
+.rabbet-line { stroke: var(--ink); stroke-opacity: .45; stroke-width: 1; stroke-dasharray: 7 3 2 3; fill: none; }
+.chip { cursor: pointer; }
+.chip rect { fill: var(--tape); stroke: rgba(0,0,0,.35); stroke-width: 1; }
+.chip text { fill: var(--tape-ink); font: 500 12.5px var(--font-num); }
+.chip.calc rect { fill: var(--panel); stroke: var(--muted); stroke-dasharray: 3 2; }
+.chip.calc text { fill: var(--ink); }
+.chip:hover rect, .chip:focus-visible rect { stroke: var(--ink); stroke-width: 2; }
+.chip:focus { outline: none; }
+.center-label { font: 600 11px var(--font-display); letter-spacing: .1em; fill: var(--ink); text-transform: uppercase; }
+.center-sub { font: 400 11.5px var(--font-num); fill: var(--ink); opacity: .8; }
+.label-bg { fill: var(--panel); opacity: .85; }
+
+/* Corner view */
+.corner-stage { position: relative; height: 330px; touch-action: none; cursor: grab; }
+.corner-stage:active { cursor: grabbing; }
+.corner-stage canvas { display: block; }
+.corner-controls { display: flex; gap: 10px 14px; flex-wrap: wrap; align-items: center; padding: 8px 12px 10px; border-top: 1px solid var(--line); }
+.corner-controls label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.corner-controls input[type="range"] { width: 120px; accent-color: var(--ink); }
+.corner-controls .hint { margin-left: auto; color: var(--muted); font-size: 13px; }
+
+/* Inspector */
+.inspector { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 4px 14px 14px; min-width: 0; }
+.inspector fieldset { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 12px 0 4px; display: grid; gap: 10px; min-width: 0; }
+.inspector fieldset:first-child { border-top: 0; }
+.inspector legend { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; padding: 0; float: left; width: 100%; margin-bottom: 2px; }
+.inspector legend + * { clear: left; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.lbl { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: baseline; }
+.lbl .tag { margin-left: auto; font-size: 11px; font-family: var(--font-display); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.inp { position: relative; display: flex; align-items: center; }
+.inp input, .inp select { width: 100%; min-width: 0; height: 36px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); padding: 0 34px 0 10px; font-size: 14.5px; }
+.inp select { padding-right: 10px; font-family: var(--font-body); }
+.inp .u { position: absolute; right: 10px; color: var(--muted); font-size: 12.5px; pointer-events: none; }
+.inp input:hover { border-color: var(--muted); }
+.field.calc .inp input { border-style: dashed; background: transparent; cursor: pointer; }
+.field.calc .lbl .tag::after { content: "calculated"; }
+.field.bad .inp input { border-color: var(--error); box-shadow: 0 0 0 1px var(--error); }
+.field .err { color: var(--error); font-size: 12.5px; }
+.field .auto { margin-left: auto; font-size: 11px; font-family: var(--font-display); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.field .reset { border: 0; background: none; padding: 0; color: var(--ink); text-decoration: underline; cursor: pointer; font-size: 12px; margin-left: auto; }
+.pair, #joint-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+.span2 { grid-column: 1 / -1; }
+.trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--ink); margin: 0; }
+.check:has(input:disabled) { opacity: .5; cursor: default; }
+.help { margin: -2px 0 0; color: var(--muted); font-size: 13px; }
+.x { color: var(--muted); }
+
+/* Results */
+.results, #stock, #steps { margin-top: 28px; }
+.res-head { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; margin-bottom: 10px; }
+.res-head h2 { font-size: 20px; letter-spacing: .06em; }
+.res-head .sub { color: var(--muted); font-size: 14px; }
+.res-head .btn { margin-left: auto; }
+.warnings { display: grid; gap: 6px; margin-bottom: 12px; }
+.warn { display: flex; gap: 10px; align-items: flex-start; padding: 8px 12px; border-radius: var(--r); background: var(--warn-bg); color: var(--ink); }
+.warn b { font-family: var(--font-display); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; color: var(--warn); padding-top: 2px; flex: none; }
+.warn.error { background: var(--error-bg); }
+.warn.error b { color: var(--error); }
+.sum { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0; margin: 0 0 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); overflow: hidden; }
+.sum div { padding: 9px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 0 -1px -1px 0; }
+.sum dt { font-size: 12px; color: var(--muted); font-family: var(--font-display); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.sum dd { margin: 2px 0 0; font-family: var(--font-num); font-size: 15px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); }
+table { border-collapse: collapse; width: 100%; }
+.cuts th, .cuts td, .mats th, .mats td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.cuts th, .mats th { font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.cuts tr:last-child td, .mats tr:last-child td { border-bottom: 0; }
+.cuts td.n, .cuts th.n { text-align: right; white-space: nowrap; font-family: var(--font-num); }
+.cuts td.len { font-family: var(--font-num); font-size: 16px; font-weight: 500; white-space: nowrap; }
+.cuts td.part { font-weight: 600; white-space: nowrap; }
+.cuts td.notes { color: var(--muted); min-width: 220px; }
+.cuts td.mono { font-family: var(--font-num); white-space: nowrap; }
+.note { color: var(--muted); font-size: 13.5px; margin: 8px 0 0; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 24px; }
+@media (min-width: 900px) { .cols { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); } }
+.cols h3 { margin-bottom: 8px; }
+.card { padding: 10px 0 12px; border-top: 1px solid var(--line); }
+.card h4 { margin: 0 0 6px; font-family: var(--font-display); font-weight: 600; font-size: 16px; }
+.card ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; max-width: 70ch; }
+.mats-wrap { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); overflow-x: auto; }
+.mats td.n { font-family: var(--font-num); text-align: right; white-space: nowrap; }
+.mats td .size { font-family: var(--font-num); white-space: nowrap; }
+.mats td .meta { color: var(--muted); font-size: 13px; }
+
+/* Stock layout */
+.layout { display: grid; gap: 18px; }
+.lgroup h3 { color: var(--ink); margin-bottom: 4px; font-size: 14px; }
+.lgroup .meta { color: var(--muted); font-size: 13.5px; margin: 0 0 8px; }
+.board-svg { display: block; width: 100%; overflow: visible; }
+.board-svg .stock { fill: var(--sunk); stroke: var(--line); }
+.board-svg .piece { fill: var(--wood, #e2b882); stroke: #3a2a1d; stroke-width: 1; }
+.board-svg .piece.alt { fill: #b98154; }
+.board-svg .pl { font: 500 11.5px var(--font-num); fill: #2a1d12; }
+.board-svg .piece.alt + .pl, .board-svg .pl.on-dark { fill: #fff6ea; }
+.board-svg .off { fill: url(#hatch); stroke: var(--line); }
+.board-svg .ol { font: 400 11.5px var(--font-num); fill: var(--muted); }
+.board-svg .bl { font: 600 11px var(--font-display); letter-spacing: .08em; fill: var(--muted); text-transform: uppercase; }
+.board-svg .over { fill: var(--error-bg); stroke: var(--error); }
+.stock-sum { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+
+/* Steps */
+#steps ol { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 8px; max-width: 75ch; }
+#steps li::marker { font-family: var(--font-num); color: var(--muted); }
+
+footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
+footer p { margin: 0; max-width: 80ch; }
+
+/* Dimension editor */
+.editor { position: fixed; z-index: 40; width: min(300px, calc(100vw - 24px)); background: var(--panel); border: 1px solid var(--ink); border-radius: var(--r); box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 12px; display: grid; gap: 10px; }
+.editor label { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+.editor .inp input { height: 42px; font-size: 18px; }
+.ed-fr { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.ed-fr button, .ed-nudge button { border: 1px solid var(--line); background: var(--bg); border-radius: 3px; padding: 6px 0; cursor: pointer; font-family: var(--font-num); font-size: 13px; }
+.ed-fr button:hover, .ed-nudge button:hover { border-color: var(--ink); }
+.ed-nudge { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.ed-note { margin: 0; font-size: 13px; color: var(--muted); }
+.ed-err { margin: 0; font-size: 13px; color: var(--error); }
+.ed-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: var(--r); font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 50; max-width: calc(100vw - 32px); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+@media (max-width: 560px) {
+  .brand h1 { font-size: 22px; }
+  .front-stage { height: 360px; }
+  .corner-stage { height: 270px; }
+  .trio { grid-template-columns: 1fr 1fr; }
+  .bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 12px; }
+  .bar::-webkit-scrollbar { display: none; }
+  .bar-sum, .bar a { white-space: nowrap; flex: none; }
+  .bar a { font-size: 12px; }
+  .lbl .tag { font-size: 10px; }
+  .actions #btn-print { display: none; }
+  /* Cut list rows become cards: part and length on top, the rest labelled below. */
+  .cuts thead { display: none; }
+  .cuts tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 12px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .cuts tr:last-child { border-bottom: 0; }
+  .cuts td { padding: 0; border: 0; grid-column: 1 / -1; }
+  .cuts td.part { grid-column: 1; grid-row: 1; font-size: 16px; }
+  .cuts td.len { grid-column: 2; grid-row: 1; text-align: right; font-size: 18px; }
+  .cuts td.n { text-align: left; }
+  .cuts td.empty { display: none; }
+  .cuts td.notes { min-width: 0; }
+  .cuts td[data-label]::before { content: attr(data-label) "  "; font-family: var(--font-display); font-weight: 600; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
+}
+
+@media print {
+  body { background: #fff; color: #000; }
+  .actions, .bar, .joints, .inspector, .corner-controls, .legend, .res-head .btn, .editor, .toast, .designs, .panel-head .hint { display: none !important; }
+  .work { grid-template-columns: 1fr 1fr !important; }
+  .panel, .table-wrap, .sum, .mats-wrap { border-color: #999; }
+  section { break-inside: avoid-page; }
+  .results, #stock, #steps { margin-top: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+        <rect x="1" y="1" width="38" height="38" rx="4" fill="var(--ink)"/>
+        <path d="M7 7h26l-8 8H15v10l-8 8z" fill="var(--tape)"/>
+        <path d="M7 7l8 8" stroke="var(--ink)" stroke-width="1.6"/>
+      </svg>
+      <div>
+        <h1>Framewright</h1>
+        <p>Picture frame cut lists for eight ways to join a corner</p>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="seg" data-seg="units" role="group" aria-label="Units">
+        <button type="button" data-val="in">in</button>
+        <button type="button" data-val="mm">mm</button>
+      </div>
+      <button type="button" class="btn" id="btn-designs" aria-expanded="false" aria-controls="designs">Saved designs</button>
+      <button type="button" class="btn" id="btn-link" hidden>Copy link</button>
+      <button type="button" class="btn" id="btn-print" hidden>Print</button>
+      <button type="button" class="btn" id="btn-install" hidden>Install app</button>
+    </div>
+  </header>
+
+  <div class="designs" id="designs" hidden>
+    <form id="save-form">
+      <input id="save-name" aria-label="Design name" placeholder="Name this design, e.g. Hallway mirror" maxlength="60">
+      <button type="submit" class="btn primary">Save current design</button>
+    </form>
+    <ul id="design-list"></ul>
+    <p class="empty" id="design-empty">Saved designs stay in this browser on this device.</p>
+  </div>
+
+  <nav class="bar" aria-label="Sections">
+    <span class="bar-sum" id="bar-sum"></span>
+    <a href="#design">Design</a>
+    <a href="#cutlist">Cut list</a>
+    <a href="#stock">Stock</a>
+    <a href="#steps">Steps</a>
+  </nav>
+
+  <section id="design" aria-label="Design">
+    <div class="joints" id="joints" role="group" aria-label="Corner joint"></div>
+    <p class="joint-blurb" id="joint-blurb"></p>
+
+    <div class="work">
+      <div class="stage">
+        <figure class="panel">
+          <figcaption class="panel-head">
+            <h2>Front view</h2>
+            <span class="hint">Tap a yellow dimension to change it</span>
+          </figcaption>
+          <div class="front-stage" id="front-stage">
+            <svg id="front-under" class="layer" aria-hidden="true"></svg>
+            <canvas id="front-canvas" class="layer" role="img" aria-label="Front view of the frame"></canvas>
+            <svg id="front-over" class="layer"></svg>
+            <div class="stage-msg" id="front-msg" hidden></div>
+          </div>
+          <div class="legend">
+            <span><i class="swatch sw-tape"></i>Size you set</span>
+            <span><i class="swatch sw-calc"></i>Calculated</span>
+            <span><i class="swatch sw-hidden"></i>Hidden joinery and rabbet</span>
+          </div>
+        </figure>
+
+        <figure class="panel">
+          <figcaption class="panel-head">
+            <h2>Corner joint</h2>
+            <div class="seg" data-seg="vmode" role="group" aria-label="Model">
+              <button type="button" data-val="corner">Corner</button>
+              <button type="button" data-val="frame">Whole frame</button>
+            </div>
+            <div class="seg" data-seg="vangle" role="group" aria-label="Viewpoint">
+              <button type="button" data-val="iso">Front</button>
+              <button type="button" data-val="back">Back</button>
+              <button type="button" data-val="flat">Face on</button>
+            </div>
+          </figcaption>
+          <div class="corner-stage" id="corner-stage">
+            <canvas id="corner-canvas" role="img" aria-label="3D view of the corner joint"></canvas>
+            <div class="stage-msg" id="corner-msg" hidden></div>
+          </div>
+          <div class="corner-controls">
+            <label for="explode">Assembled <input type="range" id="explode" min="0" max="1" step="0.01" value="0.55"> Apart</label>
+            <span class="hint">Drag to turn it</span>
+          </div>
+        </figure>
+      </div>
+
+      <form class="inspector" id="inspector" autocomplete="off" novalidate>
+        <fieldset>
+          <legend>Size</legend>
+          <div class="field">
+            <span class="lbl" id="lbl-solve">Calculate</span>
+            <div class="seg seg-wide" data-seg="solve" role="group" aria-labelledby="lbl-solve">
+              <button type="button" data-val="outside">Outside size</button>
+              <button type="button" data-val="opening" id="solve-inner-btn">Artwork size</button>
+              <button type="button" data-val="widths">Widths</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="lbl" id="lbl-ref">Measure the inside by</span>
+            <div class="seg seg-wide" data-seg="innerRef" role="group" aria-labelledby="lbl-ref">
+              <button type="button" data-val="art">Artwork or glass</button>
+              <button type="button" data-val="sight">Visible opening</button>
+            </div>
+          </div>
+          <div class="pair">
+            <label class="field" data-calc="opening"><span class="lbl"><span><span class="lbl-inner">Artwork</span> width</span><span class="tag"></span></span>
+              <span class="inp"><input id="f-inner-w" data-path="inner.w" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field" data-calc="opening"><span class="lbl"><span><span class="lbl-inner">Artwork</span> height</span><span class="tag"></span></span>
+              <span class="inp"><input id="f-inner-h" data-path="inner.h" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <div class="pair">
+            <label class="field" data-calc="outside"><span class="lbl">Outside width<span class="tag"></span></span>
+              <span class="inp"><input id="f-out-w" data-path="outside.w" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field" data-calc="outside"><span class="lbl">Outside height<span class="tag"></span></span>
+              <span class="inp"><input id="f-out-h" data-path="outside.h" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <div class="trio">
+            <label class="field" data-calc="widths"><span class="lbl">Stiles<span class="tag"></span></span>
+              <span class="inp"><input id="f-stile" data-path="stile" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field" data-calc="widths"><span class="lbl">Top rail<span class="tag"></span></span>
+              <span class="inp"><input id="f-top" data-path="top" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field" data-calc="widths"><span class="lbl">Bottom rail<span class="tag"></span></span>
+              <span class="inp"><input id="f-bottom" data-path="bottom" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <label class="check"><input type="checkbox" id="f-link" data-path="linkWidths" data-kind="bool"> Same width all round</label>
+          <p class="help">Stiles are the sides; rails are the top and bottom. Type fractions as 11 3/4 or 11-3/4, or metric like 298 mm.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Stock and rabbet</legend>
+          <div class="pair">
+            <label class="field"><span class="lbl">Stock thickness</span>
+              <span class="inp"><input id="f-thick" data-path="thickness" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field"><span class="lbl">Fit allowance</span>
+              <span class="inp"><input id="f-clear" data-path="clearance" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <div class="pair">
+            <label class="field"><span class="lbl">Rabbet width (lip)</span>
+              <span class="inp"><input id="f-rabw" data-path="rabbetW" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field"><span class="lbl">Rabbet depth</span>
+              <span class="inp"><input id="f-rabd" data-path="rabbetD" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <p class="help">The rabbet is the step behind the frame that holds the glass, art and backer. The fit allowance is the total play around the glass.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend id="lg-joint">Joint</legend>
+          <div class="field" id="through-field">
+            <span class="lbl" id="lbl-through">Runs through to the corner</span>
+            <div class="seg seg-wide" data-seg="through" role="group" aria-labelledby="lbl-through">
+              <button type="button" data-val="stiles">Stiles (sides)</button>
+              <button type="button" data-val="rails">Rails (top &amp; bottom)</button>
+            </div>
+          </div>
+          <div id="joint-fields" class="field-list"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Mat</legend>
+          <label class="check"><input type="checkbox" id="f-mat" data-path="mat.on" data-kind="bool"> Add a mat around the artwork</label>
+          <div id="mat-fields" class="field-list" style="display:grid;gap:10px">
+            <div class="trio">
+              <label class="field"><span class="lbl">Sides</span>
+                <span class="inp"><input id="f-mat-side" data-path="mat.side" spellcheck="false"><span class="u"></span></span></label>
+              <label class="field"><span class="lbl">Top</span>
+                <span class="inp"><input id="f-mat-top" data-path="mat.top" spellcheck="false"><span class="u"></span></span></label>
+              <label class="field"><span class="lbl">Bottom</span>
+                <span class="inp"><input id="f-mat-bottom" data-path="mat.bottom" spellcheck="false"><span class="u"></span></span></label>
+            </div>
+            <label class="field"><span class="lbl">Window overlaps the image by</span>
+              <span class="inp"><input id="f-mat-ov" data-path="mat.overlap" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Cutting</legend>
+          <div class="pair">
+            <label class="field"><span class="lbl">Board length</span>
+              <span class="inp"><input id="f-board" data-path="stock.length" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field"><span class="lbl">Saw kerf</span>
+              <span class="inp"><input id="f-kerf" data-path="stock.kerf" spellcheck="false"><span class="u"></span></span></label>
+          </div>
+          <div class="pair">
+            <label class="field"><span class="lbl">End trim per board</span>
+              <span class="inp"><input id="f-trim" data-path="stock.trim" spellcheck="false"><span class="u"></span></span></label>
+            <label class="field"><span class="lbl">Frames to make</span>
+              <span class="inp"><input id="f-qty" data-path="qty" data-kind="int" inputmode="numeric" spellcheck="false"></span></label>
+          </div>
+          <label class="check"><input type="checkbox" id="f-grain" data-path="stock.grain" data-kind="bool"> Cut each frame in order so the grain wraps the corners</label>
+          <label class="field"><span class="lbl">Round to</span>
+            <span class="inp"><select id="f-prec"></select></span></label>
+        </fieldset>
+      </form>
+    </div>
+  </section>
+
+  <section class="results" id="cutlist" aria-label="Cut list">
+    <div class="res-head">
+      <h2>Cut list</h2>
+      <span class="sub" id="cut-sub"></span>
+      <button type="button" class="btn" id="btn-copy">Copy as text</button>
+    </div>
+    <div class="warnings" id="warnings"></div>
+    <dl class="sum" id="sum"></dl>
+    <div class="table-wrap"><table class="cuts" id="cuts"></table></div>
+    <p class="note" id="cut-note"></p>
+    <div class="cols">
+      <div>
+        <h3>Joinery</h3>
+        <div id="cards"></div>
+      </div>
+      <div>
+        <h3>Materials and hardware</h3>
+        <div class="mats-wrap"><table class="mats" id="mats"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="stock" aria-label="Stock layout">
+    <div class="res-head">
+      <h2>Stock layout</h2>
+      <span class="sub" id="stock-sub"></span>
+    </div>
+    <p class="stock-sum" id="stock-sum"></p>
+    <div class="layout" id="layout"></div>
+  </section>
+
+  <section id="steps" aria-label="Build steps">
+    <div class="res-head"><h2>Build steps</h2></div>
+    <ol id="steps-list"></ol>
+  </section>
+
+  <footer>
+    <p>All sizes are worked out from your inputs; check the first cut against a test piece before cutting good stock. A + or − after a fraction means the true size is a hair over or under it.</p>
+    <p>Framewright runs entirely in your browser. Nothing you enter leaves this device.</p>
+  </footer>
+</div>
+
+<div class="editor" id="editor" role="dialog" aria-modal="false" aria-labelledby="ed-label" hidden>
+  <label for="ed-input" id="ed-label">Dimension</label>
+  <span class="inp"><input id="ed-input" spellcheck="false" autocomplete="off"><span class="u"></span></span>
+  <div class="ed-fr" id="ed-fr"></div>
+  <div class="ed-nudge" id="ed-nudge"></div>
+  <p class="ed-note" id="ed-note"></p>
+  <p class="ed-err" id="ed-err" hidden></p>
+  <div class="ed-actions">
+    <button type="button" class="btn" id="ed-cancel">Cancel</button>
+    <button type="button" class="btn primary" id="ed-ok">Set size</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/core.js"></script>
+<script src="js/geom.js"></script>
+<script src="js/render.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
